@@ -1,20 +1,6 @@
-# Copyright 2019 The Bazel Authors. All rights reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""cc_toolchain rule
 
-"""A Starlark cc_toolchain configuration rule"""
-
-"""
+According to:
 https://bazel.build/docs/cc-toolchain-config-reference
 """
 
@@ -24,8 +10,6 @@ load(
     "feature",
     "flag_group",
     "flag_set",
-    "with_feature_set",
-    "artifact_name_pattern"
 )
 load("@bazel_utilities//toolchains:action_names.bzl",
     "ACTIONS_COMPILE_ALL",
@@ -39,8 +23,9 @@ load("@bazel_utilities//toolchains:action_names.bzl",
     "ACTIONS_COV_COMPILE",
     "ACTIONS_COV_LINK",
 )
-load("@bazel_utilities//toolchains:config.bzl", "add_action_configs", "register_tools")
-load("@bazel_utilities//toolchains:toolchain_config_feature_legacy.bzl", "features_module_maps", "features_legacy")
+# load("@bazel_utilities//toolchains:toolchain_config_feature_legacy.bzl", "features_module_maps", "features_legacy")
+load("@bazel_utilities//toolchains:tools_utils.bzl", "compiler_get_tool_name", "get_tool_path", "register_tools")
+load("@bazel_utilities//toolchains:unpack.bzl", "unpack_flags", "unpack_artifacts_patterns")
 
 ACTIONS_FEATURES_LUT_COMPILE = {
     "copts": ACTIONS_COMPILE_ALL,
@@ -59,62 +44,54 @@ ACTIONS_FEATURES_LUT_COV = {
     "lcov": ACTIONS_COV_LINK
 }
 
-def flags_unpack(flags_packed):
-    ""
-    flags_unpacked = []
-    for flag_type, flag_flags in flags_packed.items():
-        # filters name and json mode
-        if flag_type.startswith('$'):
-            flag_flags = json.decode(flag_flags)
-            flag_type = flag_type[1:]
-        elif flag_type.startswith('#'):
-            flag_flags = flag_flags.split(';')
-            flag_type = flag_type[1:]
-        
-        if flag_type.startswith('%'):
-            flag_type = flag_type[flag_type.find('%') + 1:]
-        
-        patterns = flag_type.split('/')
-        flag_types = []
-        if patterns[0].startswith('$'):
-            patterns[0] = patterns[0][1:]
-            flag_types = json.decode(patterns[0])
-        elif patterns[0].startswith('#'):
-            patterns[0] = patterns[0][1:]
-            flag_types = patterns[0].split(';')
-        else:
-            flag_types.append(patterns[0])
+def feature_simple_add(name, actions, flags, enabled = True, provides = []):
+    """Feature
+    
+    This function return the feature build only from an flag list
 
-        with_features = []
-        if len(patterns) > 1:
-            features_filters = patterns[1].split(';')
-            for filter in features_filters:
-                if filter.startswith('[') == False:
-                    if filter.startswith('!'):
-                        with_features.append(with_feature_set(not_features = [filter]))
-                    else:
-                        with_features.append(with_feature_set(features = [filter]))
-                else:
-                    filters = json.decode(filter)
-                    f_with = []
-                    f_without = []
-                    for subfilter in filters:
-                        if subfilter.startswith('!'):
-                            f_without.append(subfilter)
-                        else:
-                            f_with.append(subfilter)
-                    with_features.append(with_feature_set(features = f_with, not_features = f_without))
+    Args:
+        name: feature name
+        actions: actions list of the feature
+        flags: flags list of the feature
+        enabled: If the feature is enable by default or not
+        provides: provides list of the feature
+      
+    Returns:
+        The feature
+    """
+    if len(flags) > 0:
+        return feature(
+            name = name,
+            enabled = enabled,
+            provides = provides,
+            flag_sets = [
+                flag_set(
+                    actions = actions,
+                    flag_groups = [
+                        flag_group(
+                            flags = flags
+                        )
+                    ]
+                )
+            ]
+        )
+    return None
 
-        for flag_type in flag_types:
-            flags_unpacked.append({
-                "type": flag_type,
-                "with_features": with_features,
-                "flags": flag_flags
-            })
-    return flags_unpacked
+def feature_simple_flags(name, flags_unpacked, actions_lut, enabled = True, provides = []):
+    """Feature Flags
+    
+    This function return the feature build from the unpacked flags list 
 
-def feature_common_flags(name, flags_unpacked, actions_lut, enabled = True, provides = []):
-    ""
+    Args:
+        name: feature name
+        flags_unpacked: unpacked flags in the ctx 
+        actions_lut: The actions lookup table to see which actions to activate
+        enabled: If the feature is enable by default or not
+        provides: provides list of the feature
+      
+    Returns:
+        The feature
+    """
     flag_sets = []
     for flag_data in flags_unpacked:
         if len(flag_data["flags"]) > 0 and flag_data["type"] in actions_lut:
@@ -134,41 +111,52 @@ def feature_common_flags(name, flags_unpacked, actions_lut, enabled = True, prov
     return _feature
 
 def feature_default_compile_flags(flags_unpacked):
-    return feature_common_flags("default_compile_flags", flags_unpacked, ACTIONS_FEATURES_LUT_COMPILE)
+    """default_compile_flags
+
+    Args:
+        flags_unpacked: unpacked flags in the ctx 
+    Returns:
+        The feature
+    """
+    return feature_simple_flags("default_compile_flags", flags_unpacked, ACTIONS_FEATURES_LUT_COMPILE)
 
 def feature_default_link_flags(flags_unpacked):
-    return feature_common_flags("default_link_flags", flags_unpacked, ACTIONS_FEATURES_LUT_LINK)
+    """default_link_flags
+    
+    Args:
+        flags_unpacked: unpacked flags in the ctx 
+    Returns:
+        The feature
+    """
+    return feature_simple_flags("default_link_flags", flags_unpacked, ACTIONS_FEATURES_LUT_LINK)
 
 def feature_coverage(flags_unpacked):
-    return feature_common_flags("coverage", flags_unpacked, ACTIONS_FEATURES_LUT_COV, provides = ["profile"])
+    """coverage
+    
+    Args:
+        flags_unpacked: unpacked flags in the ctx 
+    Returns:
+        The feature
+    """
+    return feature_simple_flags("coverage", flags_unpacked, ACTIONS_FEATURES_LUT_COV, provides = ["profile"])
 
-def feature_common_add(name, actions, flags, enabled = True):
-    if len(flags) > 0:
-        return feature(
-            name = name,
-            enabled = enabled,
-            flag_sets = [
-                flag_set(
-                    actions = actions,
-                    flag_groups = [
-                        flag_group(
-                            flags = flags
-                        )
-                    ]
-                )
-            ]
-        )
-    return None
-
-def features_DIL(preprocessor_defines, include_directories, lib_directories):
-    ""
+def features_DIL(defines, include_directories, lib_directories):
+    """Feature Define-Include-Link
+    
+    Args:
+        defines: defines list
+        include_directories: include directories list
+        lib_directories: link directories list
+    Returns:
+        The list of all features that have been created
+    """
     features = []
-    all_defines = [ "-D{}".format(define) for define in preprocessor_defines ]
+    all_defines = [ "-D{}".format(define) for define in defines ]
     all_includedirs = [ "-I{}".format(includedir) for includedir in include_directories]
     all_linkdirs = [ "-L{}".format(linkdir) for linkdir in lib_directories]
     if len(all_defines) > 0:
         features.append(
-            feature_common_add(
+            feature_simple_add(
                 name = "toolchain_config_defines",
                 actions = ACTIONS_COMPILE_ALL,
                 flags = all_defines
@@ -176,7 +164,7 @@ def features_DIL(preprocessor_defines, include_directories, lib_directories):
         )
     if len(all_includedirs) > 0:
         features.append(
-            feature_common_add(
+            feature_simple_add(
                 name = "toolchain_config_link",
                 actions = ACTIONS_COMPILE_ALL,
                 flags = all_includedirs
@@ -184,7 +172,7 @@ def features_DIL(preprocessor_defines, include_directories, lib_directories):
         )
     if len(all_linkdirs) > 0:
         features.append(
-            feature_common_add(
+            feature_simple_add(
                 name = "toolchain_config_link",
                 actions = ACTIONS_LINK_ALL,
                 flags = all_linkdirs
@@ -193,15 +181,31 @@ def features_DIL(preprocessor_defines, include_directories, lib_directories):
     return features
 
 def feature_link_libs(name, linklibs):
+    """Feature Link Lib
+    
+    Args:
+        name: Name of the feature
+        linklibs: List of libs to link
+    Returns:
+        The feature
+    """
     all_linklibs = [ "-l{}".format(linklib) for linklib in linklibs]
-    return feature_common_add(
+    return feature_simple_add(
         name = name,
         actions = ACTIONS_LINK_ALL,
         flags = all_linklibs
     )
 
 def features_well_known(ctx):
-    ""
+    """Feature well_known
+    
+    Create all Well-Known Feature according to: https://bazel.build/docs/cc-toolchain-config-reference
+
+    Args:
+        ctx: The crule context
+    Returns:
+        All features that have been created
+    """
     features = []
     features.append(feature(name = "supports_pic", enabled = True))
     features.append(feature(name = "supports_dynamic_linker", enabled = True))
@@ -210,7 +214,13 @@ def features_well_known(ctx):
     return features
 
 def features_all(ctx):
-    ""
+    """Feature All
+
+    Args:
+        ctx: The crule context
+    Returns:
+        The list of all features that have been created
+    """
     features = []
     features.append(feature(name = "dbg"))
     features.append(feature(name = "opt"))
@@ -219,7 +229,7 @@ def features_all(ctx):
     for extra_feature in ctx.attr.extras_features:
         features.append(feature(name = extra_feature))
 
-    flags_unpacked = flags_unpack(ctx.attr.flags)
+    flags_unpacked = unpack_flags(ctx.attr.flags)
     features.append(feature_default_compile_flags(flags_unpacked))
     features.append(feature_default_link_flags(flags_unpacked))
     features.append(feature_coverage(flags_unpacked))
@@ -236,12 +246,48 @@ def features_all(ctx):
     )
     return features
 
+def add_action_configs(toolchain_bins, tool_name, action_names, implies = []):
+    """Create an list of action_config
+
+    This function create an list of action_config
+
+    Args:
+        toolchain_bins: The rule context toolchain_bins
+        tool_name: The full tool_name including optionals prefix and extention
+        action_names: The list of all action_name that need to be created
+        implies: The implies list of the action_config
+
+    Returns:
+        The list of all action_config that have been created
+    """
+    if tool_name == "":
+        return None
+    action_configs = []
+    for action_name in action_names:
+        path = get_tool_path(toolchain_bins, tool_name)
+        if path == None:
+            continue
+        action_configs.append(
+            action_config(
+                action_name = action_name,
+                tools = [ tool(path = path) ],
+                implies = implies
+            )
+        )
+    return action_configs
+
 def action_configs_all(ctx):
-    ""
+    """All action config
+
+    Args:
+        ctx: The rule context
+    Returns:
+        The list of all action_config that have been created
+    """
     action_configs = []
     action_configs += add_action_configs(
         ctx.files.toolchain_bins,
-        ctx.attr.compiler.get("cpp", ctx.attr.compiler.get("cxx", "g++")),
+        compiler_get_tool_name(ctx.attr.compiler, "cpp", "g++", ["cxx"]),
         [
             ACTION_NAMES.cpp_compile,
             ACTION_NAMES.cpp_header_parsing,
@@ -252,7 +298,7 @@ def action_configs_all(ctx):
     )
     action_configs += add_action_configs(
         ctx.files.toolchain_bins,
-        ctx.attr.compiler.get("cc", "gcc"),
+        compiler_get_tool_name(ctx.attr.compiler, "cc", "gcc"),
         [
             ACTION_NAMES.c_compile,
             ACTION_NAMES.cc_flags_make_variable,
@@ -261,7 +307,7 @@ def action_configs_all(ctx):
     )
     action_configs += add_action_configs(
         ctx.files.toolchain_bins,
-        ctx.attr.compiler.get("cxx", "g++"),
+        compiler_get_tool_name(ctx.attr.compiler, "cxx", "g++"),
         [
             ACTION_NAMES.cpp_link_executable,
             ACTION_NAMES.cpp_link_dynamic_library,
@@ -270,7 +316,7 @@ def action_configs_all(ctx):
     )
     action_configs += add_action_configs(
         ctx.files.toolchain_bins,
-        ctx.attr.compiler.get("ar", "ar"),
+        compiler_get_tool_name(ctx.attr.compiler, "ar", "ar"),
         [
             ACTION_NAMES.cpp_link_static_library
         ],
@@ -278,34 +324,19 @@ def action_configs_all(ctx):
     )
     action_configs += add_action_configs(
         ctx.files.toolchain_bins,
-        ctx.attr.compiler.get("cov", "gcov"),
+        compiler_get_tool_name(ctx.attr.compiler, "cov", "gcov"),
         [
             ACTION_NAMES.llvm_cov
         ]
     )
     action_configs += add_action_configs(
         ctx.files.toolchain_bins,
-        ctx.attr.compiler.get("strip", "strip"),
+        compiler_get_tool_name(ctx.attr.compiler, "strip", "strip"),
         [
             ACTION_NAMES.strip
         ]
     )
     return action_configs
-
-def get_artifacts_patterns(artifacts_patterns_packed):
-    ""
-    artifacts_patterns_categories = artifacts_patterns_packed.split(',')
-    patterns = []
-    for category in artifacts_patterns_categories:
-        unpacked = category.split('/')
-        patterns.append(
-            artifact_name_pattern(
-                category_name = unpacked[0],
-                prefix = unpacked[1],
-                extension = unpacked[2]
-            )
-        )
-    return patterns
 
 def _impl_cc_toolchain_config(ctx):
     return cc_common.create_cc_toolchain_config_info(
@@ -327,38 +358,11 @@ def _impl_cc_toolchain_config(ctx):
         abi_libc_version = ctx.attr.abi_libc_version,
         target_libc = ctx.attr.target_libc,
 
-        artifact_name_patterns = get_artifacts_patterns(ctx.attr.artifacts_patterns_packed),
+        artifact_name_patterns = unpack_artifacts_patterns(ctx.attr.artifacts_patterns_packed),
 
         tool_paths = register_tools(ctx.attr.tools)
     )
 
-"""
-flags: {type} | {type}/{feature}
-    type:
-        - cpp_copts
-        - conly_copts
-        - cxx_copts
-        - link_copts
-    feature:
-        - dbg
-        - opt
-        - fastbuild
-
-tools:
-    - "ar": "/usr/bin/ar",
-    - "ld": "/usr/bin/ld",
-    - "cpp": "/usr/bin/cpp",
-    - "cc": "/usr/bin/gcc",
-    - "dwp": "/usr/bin/dwp",
-    - "gcov": "/usr/bin/gcov",
-    - "nm": "/usr/bin/nm",
-    - "objcopy": "/usr/bin/objcopy",
-    - "objdump": "/usr/bin/objdump",
-    - "strip": "/usr/bin/strip",
-
-extras_features:
-    - supports_start_end_lib
-"""
 cc_toolchain_config = rule(
     implementation = _impl_cc_toolchain_config,
     attrs = {

@@ -1,4 +1,8 @@
-""
+"""Legacy function for the cc_toolchain rule
+
+According to:
+https://bazel.build/docs/cc-toolchain-config-reference
+"""
 
 load("@bazel_tools//tools/build_defs/cc:action_names.bzl", "ACTION_NAMES")
 load(
@@ -13,7 +17,10 @@ load(
 load("@bazel_utilities//toolchains:action_names.bzl", "ACTIONS_COMPILE_ALL", "ACTIONS_LINK_ALL", "ACTIONS_LINK_LTO")
 
 def features_module_maps():
-    """
+    """module_maps
+    
+    Returns:
+        The list of all features created 
     """
     features = []
     features.append(feature(name = "module_maps", enabled = True))
@@ -968,7 +975,14 @@ def _legacy_thinlto():
     )
 
 def features_legacy():
-    """
+    """Legacy Features
+    
+    TODO: Order them and dcheck if there are really needded
+
+    Legacy features list can be found at: https://bazel.build/docs/cc-toolchain-config-reference
+
+    Returns:
+        The list of all legacy features created 
     """
     features = []
     features.append(_legacy_user_compile_flags())
