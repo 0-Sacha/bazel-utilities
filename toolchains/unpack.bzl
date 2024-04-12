@@ -9,7 +9,7 @@ load(
     "artifact_name_pattern"
 )
 
-def unpack_flags(flags_packed):
+def unpack_flags_pack(flags_packed):
     """Unpack Flags
     
     This function unpack the flags dict given as input.
@@ -25,6 +25,9 @@ def unpack_flags(flags_packed):
             - cov
             - ccov
             - lcov
+
+            - !compile_all override of copts
+            - !link_all override of linkopts
         feature:
             - dbg
             - opt
@@ -92,7 +95,53 @@ def unpack_flags(flags_packed):
             })
     return flags_unpacked
 
-def unpack_artifacts_patterns(artifacts_patterns_packed):
+def flags_unpacked_from_kwargs(**kwargs):
+    """Make flags_unpacked from kwargs
+    
+    Args:
+        **kwargs: "type"=[flags]
+    Returns:
+        The list of all flags, each flag is now an dict:
+            - type
+            - flags
+            - with_features: the with_features list
+    """
+    flags_unpacked = []
+    for flag_type, flags in kwargs:
+        flags_unpacked.append({
+                "type": flag_type,
+                "with_features": [],
+                "flags": flags
+            })
+    return flags_unpacked
+
+def flags_unpacked_DIL(defines, includedirs, linkdirs):
+    """Make flags_unpacked from [ defines, includedirs, linkdirs ]
+    
+    Args:
+        defines: preprocessor defines
+        includedirs: include directories
+        linkdirs: lib directories
+    Returns:
+        The list of all flags, each flag is now an dict:
+            - type
+            - flags
+            - with_features: the with_features list
+    """
+    flags_unpacked = []
+    flags_unpacked.append({
+        "type": "!compile_all",
+        "with_features": [],
+        "flags": [ "-D{}".format(define) for define in defines ] + [ "-I{}".format(includedir) for includedir in includedirs]
+    })
+    flags_unpacked.append({
+        "type": "!link_all",
+        "with_features": [],
+        "flags": [ "-L{}".format(linkdir) for linkdir in linkdirs]
+    })
+    return flags_unpacked
+
+def unpack_artifacts_patterns_pack(artifacts_patterns_packed):
     """Unpack artifacts_patterns
     
     This function unpack artifacts_patterns

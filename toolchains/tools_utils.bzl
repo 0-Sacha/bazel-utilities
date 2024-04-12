@@ -37,9 +37,7 @@ def compiler_get_tool_name(compiler, tool_type, default, fallbacks = []):
     for tool_fallback in fallbacks:
         if tool_fallback in compiler:
             return base_name + compiler.get(tool_fallback)
-    if default in compiler:
-        return base_name + compiler.get(default)
-    return None
+    return base_name + compiler.get(default, default)
 
 def _get_tool_file(toolchain_bins, tool_name):
     matchs = []
@@ -56,7 +54,7 @@ def _get_tool_file(toolchain_bins, tool_name):
 
     if len(matchs) == 0:
         # buildifier: disable=print
-        print("Tool NOT Found : '{}' in {} !!".format(tool_fullname, toolchain_bins))
+        print("Tool NOT Found : '{}' in {} !!".format(tool_name, toolchain_bins))
         return None
     
     if len(matchs) > 1:
