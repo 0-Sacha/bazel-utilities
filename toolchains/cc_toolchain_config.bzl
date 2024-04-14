@@ -296,8 +296,10 @@ def features_well_known(ctx):
         All features that have been created
     """
     features = []
-    features.append(feature(name = "supports_pic", enabled = True))
-    features.append(feature(name = "supports_dynamic_linker", enabled = True))
+    if "supports_pic" in ctx.attr.enable_features:
+        features.append(feature(name = "supports_pic", enabled = True))
+    if "supports_dynamic_linker" in ctx.attr.enable_features:
+        features.append(feature(name = "supports_dynamic_linker", enabled = True))
     if "supports_start_end_lib" in ctx.attr.enable_features:
         features.append(feature(name = "supports_start_end_lib", enabled = True))
     return features
@@ -467,7 +469,7 @@ cc_toolchain_config = rule(
         'compiler': attr.string_dict(default = {}),
         'toolchain_bins': attr.label(mandatory = True, allow_files = True),
         'extras_features': attr.string_list(default = []),
-        'cxx_builtin_include_directories': attr.string_list(),
+        'cxx_builtin_include_directories': attr.string_list(default = []),
 
         'copts': attr.string_list(default = []),
         'conlyopts': attr.string_list(default = []),
@@ -479,7 +481,7 @@ cc_toolchain_config = rule(
         
         'flags': attr.string_dict(),
 
-        'artifacts_patterns_packed' : attr.string(default = ""),
+        'artifacts_patterns_packed' : attr.string_list(default = []),
         
         'tools': attr.string_dict(default = {}), 
 

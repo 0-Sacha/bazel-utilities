@@ -152,10 +152,12 @@ def unpack_artifacts_patterns_pack(artifacts_patterns_packed):
     Returns:
         The list of all artifact_name_pattern
     """
-    artifacts_patterns_categories = artifacts_patterns_packed.split(',')
     patterns = []
-    for category in artifacts_patterns_categories:
-        unpacked = category.split('/')
+    for artifacts_pattern in artifacts_patterns_packed:
+        unpacked = artifacts_pattern.split('/')
+        if len(unpacked) != 3:
+            # buildifier: disable=print
+            print("Unvalid artifacts_pattern pack: {}".format(artifacts_pattern))
         patterns.append(
             artifact_name_pattern(
                 category_name = unpacked[0],
