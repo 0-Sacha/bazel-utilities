@@ -4,6 +4,8 @@ According to:
 https://bazel.build/docs/cc-toolchain-config-reference
 """
 
+load("@bazel-utilities//toolchains:action_names.bzl", "ACTIONS_COMPILE_ALL", "ACTIONS_LINK_ALL", "ACTIONS_LINK_LTO")
+
 load("@bazel_tools//tools/build_defs/cc:action_names.bzl", "ACTION_NAMES")
 load(
     "@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl",
@@ -14,7 +16,6 @@ load(
     "variable_with_value",
     "with_feature_set",
 )
-load("@bazel_utilities//toolchains:action_names.bzl", "ACTIONS_COMPILE_ALL", "ACTIONS_LINK_ALL", "ACTIONS_LINK_LTO")
 
 def features_module_maps():
     """module_maps

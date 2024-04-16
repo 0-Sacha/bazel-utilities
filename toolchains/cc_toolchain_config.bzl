@@ -4,16 +4,7 @@ According to:
 https://bazel.build/docs/cc-toolchain-config-reference
 """
 
-load("@bazel_tools//tools/build_defs/cc:action_names.bzl", "ACTION_NAMES")
-load(
-    "@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl",
-    "feature",
-    "flag_group",
-    "flag_set",
-    "action_config",
-    "tool",
-)
-load("@bazel_utilities//toolchains:action_names.bzl",
+load("@bazel-utilities//toolchains:action_names.bzl",
     "ACTIONS_COMPILE_ALL",
     "ACTIONS_COMPILE_CPP",
     "ACTIONS_COMPILE_C",
@@ -25,9 +16,19 @@ load("@bazel_utilities//toolchains:action_names.bzl",
     "ACTIONS_COV_COMPILE",
     "ACTIONS_COV_LINK",
 )
-# load("@bazel_utilities//toolchains:toolchain_config_feature_legacy.bzl", "features_module_maps", "features_legacy")
-load("@bazel_utilities//toolchains:tools_utils.bzl", "compiler_get_tool_name", "get_tool_path", "register_tools")
-load("@bazel_utilities//toolchains:unpack.bzl", "unpack_flags_pack", "unpack_artifacts_patterns_pack")
+# load("@bazel-utilities//toolchains:toolchain_config_feature_legacy.bzl", "features_module_maps", "features_legacy")
+load("@bazel-utilities//toolchains:tools_utils.bzl", "compiler_get_tool_name", "get_tool_path", "register_tools")
+load("@bazel-utilities//toolchains:unpack.bzl", "unpack_flags_pack", "unpack_artifacts_patterns_pack")
+
+load("@bazel_tools//tools/build_defs/cc:action_names.bzl", "ACTION_NAMES")
+load(
+    "@bazel_tools//tools/cpp:cc_toolchain_config_lib.bzl",
+    "feature",
+    "flag_group",
+    "flag_set",
+    "action_config",
+    "tool",
+)
 
 ACTIONS_FEATURES_LUT_COMPILE = {
     "!compile_all": ACTIONS_COMPILE_ALL,
@@ -327,6 +328,12 @@ def features_all(ctx):
     
     features += features_well_known(ctx)
     
+    # TODO: See if fragments have theirs place in a toolchain configuration
+    # ctx.fragments.cpp.cotps
+    # ctx.fragments.cpp.conlyotps
+    # ctx.fragments.cpp.cxxotps
+    # ctx.fragments.cpp.linkotps
+
     features += features_flags(
         ctx.attr.copts,
         ctx.attr.conlyopts,
@@ -493,5 +500,6 @@ cc_toolchain_config = rule(
 
         'enable_features': attr.string_list(default = [])
     },
+    fragments = ["cpp"],
     provides = [CcToolchainConfigInfo],
 )
