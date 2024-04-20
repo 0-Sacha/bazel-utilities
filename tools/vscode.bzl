@@ -145,6 +145,7 @@ vscode_config = rule(
         'compiler_args': attr.string_list(default = []),
         'intelli_sense_mode': attr.string(default = "gcc-x64"),
     },
+    test
     fragments = [ "cpp", "platform" ],
     provides = [VSCodeConfigInfo]
 )
