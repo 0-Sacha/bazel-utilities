@@ -1,6 +1,6 @@
 ""
 
-load("@bazel_skylib//rules:copy_file.bzl", "copy_file")
+load("@bazel_skylib//lib:sets.bzl", "sets")
 
 #########################
 ######### Flags #########
@@ -12,7 +12,7 @@ VSCodeFlagsInfo = provider("", fields = {
     'flags': "",
 })
 
-def _impl_vscode_flags(target, ctx):
+def _impl_vscode_flags(_target, ctx):
     includes = []
     defines = []
     flags = []
@@ -37,6 +37,11 @@ def _impl_vscode_flags(target, ctx):
             defines += dep[VSCodeFlagsInfo].defines
             flags += dep[VSCodeFlagsInfo].flags
 
+    if hasattr(ctx.rule.attr, 'dep'):
+        includes += ctx.rule.attr.dep[VSCodeFlagsInfo].includes
+        defines += ctx.rule.attr.dep[VSCodeFlagsInfo].defines
+        flags += ctx.rule.attr.dep[VSCodeFlagsInfo].flags
+
     return [
         VSCodeFlagsInfo(
             includes = includes,
@@ -48,7 +53,7 @@ def _impl_vscode_flags(target, ctx):
 vscode_flags = aspect(
     implementation = _impl_vscode_flags,
     fragments = [],
-    attr_aspects = [ "deps" ],
+    attr_aspects = [ "dep", "deps" ],
     provides = [VSCodeFlagsInfo]
 )
 
@@ -81,6 +86,7 @@ _flag_options = {
 
 def _get_final_flags(target, cpp_fragments):
     context = {}
+
     context["includes"] = target[VSCodeFlagsInfo].includes
     context["defines"] = target[VSCodeFlagsInfo].defines
     context["compiler_args"] = []
@@ -99,6 +105,10 @@ def _get_final_flags(target, cpp_fragments):
         if not matched:
             idx, values = _options_others(flag)
             context[idx].append(values)
+
+    context["includes"] = sets.to_list(sets.make(context["includes"]))
+    context["defines"] = sets.to_list(sets.make(context["defines"]))
+    context["compiler_args"] = sets.to_list(sets.make(context["compiler_args"]))
 
     return context
 
@@ -145,7 +155,6 @@ vscode_config = rule(
         'compiler_args': attr.string_list(default = []),
         'intelli_sense_mode': attr.string(default = "gcc-x64"),
     },
-    test
     fragments = [ "cpp", "platform" ],
     provides = [VSCodeConfigInfo]
 )
@@ -177,7 +186,7 @@ def _impl_vscode_configs_json(ctx):
 
         toolchain_data["name"] = vscode_config.name
         
-        toolchain_data["includePath"] = vscode_config.includes
+        toolchain_data["includePath"] = [ "{}/{}".format("${workspaceFolder}", include) for include in vscode_config.includes ]
         toolchain_data["defines"] = vscode_config.defines
 
         toolchain_data["cStandard"] = vscode_config.c_standard
