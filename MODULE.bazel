@@ -1,7 +1,7 @@
 
 ""
 module(
-    name = "bazel-utilities",
+    name = "bazel_utilities",
     version = "0.0.1",
-    repo_name = "sacha_bazel-utilities",
+    repo_name = "sacha_bazel_utilities",
 )
