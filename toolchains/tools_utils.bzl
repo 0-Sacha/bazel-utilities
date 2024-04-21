@@ -39,29 +39,6 @@ def compiler_get_tool_name(compiler, tool_type, default, fallbacks = []):
             return base_name + compiler.get(tool_fallback)
     return base_name + compiler.get(default, default)
 
-def _get_tool_file(toolchain_bins, tool_name):
-    matchs = []
-    for file in toolchain_bins:
-        if file.basename == tool_name:
-            return file
-    tool_name_woext = tool_name.split('.')[0]
-    for file in toolchain_bins:
-        file_woext = file.basename.split('.')[0]
-        if file_woext == tool_name_woext:
-            return file
-        if file_woext.startswith(tool_name_woext):
-            matchs.append(file)
-
-    if len(matchs) == 0:
-        # buildifier: disable=print
-        print("Tool NOT Found : '{}' in {} !!".format(tool_name, toolchain_bins))
-        return None
-    
-    if len(matchs) > 1:
-        # buildifier: disable=print
-        print("Warrning: multiple Tool Found for {} !!. Keeping first one : {}".format(tool_name, matchs[0]))
-    return matchs[0]
-
 def get_tool_path(toolchain_bins, tool_name):
     """Tool Path
 
@@ -74,15 +51,25 @@ def get_tool_path(toolchain_bins, tool_name):
     Returns:
         The tool path
     """
-    path = _get_tool_file(toolchain_bins, tool_name)
-    if path == None:
+    matchs = []
+    for file in toolchain_bins:
+        if file.basename == tool_name:
+            return file.path
+    tool_name_woext = tool_name.split('.')[0]
+    for file in toolchain_bins:
+        file_woext = file.basename.split('.')[0]
+        if file_woext == tool_name_woext:
+            return file.path
+        if file_woext.startswith(tool_name_woext):
+            matchs.append(file)
+
+    if len(matchs) == 0:
+        print("Tool NOT Found : '{}' in {} !!".format(tool_name, toolchain_bins)) # buildifier: disable=print
         return None
-    path = path.path
-    if path.startswith("external/"):
-        bindir_index = path.find('/', len("external/"))
-        if bindir_index != -1:
-            path = path[bindir_index + 1:]
-    return path
+    
+    if len(matchs) > 1:
+        print("Warrning: multiple Tool Found for {} !!. Keeping first one : {}".format(tool_name, matchs[0])) # buildifier: disable=print
+    return matchs[0].path
 
 def register_tools(tools):
     """Tool Path List
