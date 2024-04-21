@@ -27,3 +27,9 @@ def get_host_infos_from_rctx(os_name, os_arch):
         host_arch = "aarch64"
 
     return host_os, host_arch, "{}_{}".format(host_os, host_arch)
+
+HOST_EXTENTION = {
+    "windows": ".exe",
+    "linux": "",
+    "darwin": "",
+}
