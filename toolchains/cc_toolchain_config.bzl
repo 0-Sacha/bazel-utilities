@@ -443,6 +443,10 @@ def action_configs_all(ctx):
     return action_configs
 
 def _impl_cc_toolchain_config(ctx):
+
+    if ctx.attr.compiler == None and ctx.attr.compiler_paths == None :
+        print("At least one of 'compiler' and 'compiler_paths' have to be set") # buildifier: disable=print
+
     return cc_common.create_cc_toolchain_config_info(
         ctx = ctx,
         toolchain_identifier = ctx.attr.toolchain_identifier,
@@ -454,7 +458,8 @@ def _impl_cc_toolchain_config(ctx):
         features = features_all(ctx),
         action_configs = action_configs_all(ctx),
 
-        compiler = ctx.attr.compiler.get("name", "gcc"),
+        compiler = ctx.attr.compiler.get("name", "gcc") if ctx.attr.compiler != None else ctx.attr.compiler_path["cc"],
+        tool_paths = register_tools(ctx.attr.compiler_paths),
 
         cxx_builtin_include_directories = ctx.attr.cxx_builtin_include_directories,
 
@@ -464,7 +469,6 @@ def _impl_cc_toolchain_config(ctx):
 
         artifact_name_patterns = unpack_artifacts_patterns_pack(ctx.attr.artifacts_patterns_packed),
 
-        tool_paths = register_tools(ctx.attr.tools)
     )
 
 cc_toolchain_config = rule(
@@ -475,8 +479,9 @@ cc_toolchain_config = rule(
         'target_name': attr.string(mandatory = True),
         'target_cpu': attr.string(mandatory = True),
 
-        'compiler': attr.string_dict(default = {}),
-        'toolchain_bins': attr.label(mandatory = True, allow_files = True),
+        'compiler': attr.string_dict(default = None),
+        'toolchain_bins': attr.label(default = None, allow_files = True),
+        'compiler_paths': attr.string_dict(default = None),
         'extras_features': attr.string_list(default = []),
         'cxx_builtin_include_directories': attr.string_list(default = []),
 
@@ -492,8 +497,6 @@ cc_toolchain_config = rule(
 
         'artifacts_patterns_packed' : attr.string_list(default = []),
         
-        'tools': attr.string_dict(default = {}), 
-
         'toolchain_libs': attr.string_list(default = []),
 
         'abi_version': attr.string(default = "local"),
