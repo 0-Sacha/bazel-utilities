@@ -97,8 +97,8 @@ def register_tools(compiler_paths):
     """
     type_to_name = {
         "cpp": "cpp",
-        "cc": "cc",
-        "cxx": "cxx",
+        "cc": "gcc",
+        "cxx": "g++",
         "cov": "cov",
         "ar": "ar",
         "ld": "ld",

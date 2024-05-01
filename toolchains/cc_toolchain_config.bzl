@@ -389,6 +389,10 @@ def action_configs_all(ctx):
         The list of all action_config that have been created
     """
     action_configs = []
+
+    if ctx.attr.toolchain_bins == None:
+        return action_configs
+
     action_configs += add_action_configs(
         ctx.files.toolchain_bins,
         compiler_get_tool_name(ctx.attr.compiler, "cpp", "g++", ["cxx"]),
@@ -444,7 +448,7 @@ def action_configs_all(ctx):
 
 def _impl_cc_toolchain_config(ctx):
 
-    if ctx.attr.compiler == None and ctx.attr.compiler_paths == None :
+    if ctx.attr.toolchain_bins == None and ctx.attr.compiler_paths == None :
         print("At least one of 'compiler' and 'compiler_paths' have to be set") # buildifier: disable=print
 
     return cc_common.create_cc_toolchain_config_info(
@@ -459,7 +463,7 @@ def _impl_cc_toolchain_config(ctx):
         action_configs = action_configs_all(ctx),
 
         compiler = ctx.attr.compiler.get("name", "gcc") if ctx.attr.compiler != None else ctx.attr.compiler_path["cc"],
-        tool_paths = register_tools(ctx.attr.compiler_paths),
+        tool_paths = register_tools(ctx.attr.compiler_paths) if ctx.attr.compiler_paths != None else [],
 
         cxx_builtin_include_directories = ctx.attr.cxx_builtin_include_directories,
 
@@ -479,9 +483,9 @@ cc_toolchain_config = rule(
         'target_name': attr.string(mandatory = True),
         'target_cpu': attr.string(mandatory = True),
 
-        'compiler': attr.string_dict(default = None),
-        'toolchain_bins': attr.label(default = None, allow_files = True),
-        'compiler_paths': attr.string_dict(default = None),
+        'compiler': attr.string_dict(mandatory = False),
+        'toolchain_bins': attr.label(mandatory = False, allow_files = True),
+        'compiler_paths': attr.string_dict(mandatory = False),
         'extras_features': attr.string_list(default = []),
         'cxx_builtin_include_directories': attr.string_list(default = []),
 
