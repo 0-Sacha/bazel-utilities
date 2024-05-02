@@ -23,13 +23,17 @@ def gen_archives_registry(archives, mirroirs = {}):
         toolchain_registry = registry[archive["toolchain"]]
 
         archive_cpy = dict(archive)
-        archive_cpy["details"] = dict(archive_cpy["details"])
-        archive_cpy["archives"] = dict(archive_cpy["archives"])
-        for host_name, host_archive_data in archive_cpy["archives"].items():
-            if archive["toolchain"] in mirroirs and archive["version"] in mirroirs[archive["toolchain"]]:
-                archive_cpy["archives"][host_name] = dict(mirroirs[archive["toolchain"]][archive["version"]])
-            else:
-                archive_cpy["archives"][host_name] = dict(host_archive_data)
+        
+        if "details" in archive_cpy:
+            archive_cpy["details"] = dict(archive_cpy["details"])
+
+        if "archives" in archive_cpy:
+            archive_cpy["archives"] = dict(archive_cpy["archives"])
+            for host_name, host_archive_data in archive_cpy["archives"].items():
+                if archive["toolchain"] in mirroirs and archive["version"] in mirroirs[archive["toolchain"]]:
+                    archive_cpy["archives"][host_name] = dict(mirroirs[archive["toolchain"]][archive["version"]])
+                else:
+                    archive_cpy["archives"][host_name] = dict(host_archive_data)
 
         toolchain_registry[archive["version"]] = archive
         if "version-short" in archive:

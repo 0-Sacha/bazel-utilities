@@ -71,28 +71,46 @@ def get_tool_path(toolchain_bins, tool_name):
         print("Warrning: multiple Tool Found for {} !!. Keeping first one : {}".format(tool_name, matchs[0])) # buildifier: disable=print
     return matchs[0].path
 
-def register_tools(tools):
+def register_tools(compiler_paths):
     """Tool Path List
 
     This function return the list of tool path from an tools list.
     Tools supported names:
-        - "cpp": "/usr/bin/cpp",
-        - "cc": "/usr/bin/gcc",
-        - "ar": "/usr/bin/ar",
-        - "ld": "/usr/bin/ld",
-        - "gcov": "/usr/bin/gcov",
-        - "nm": "/usr/bin/nm",
-        - "objcopy": "/usr/bin/objcopy",
-        - "objdump": "/usr/bin/objdump",
-        - "strip": "/usr/bin/strip",
-        - "dwp": "/usr/bin/dwp",
+        - cpp
+        - cc
+        - cxx
+        - cov
+        - ar
+        - ld
+        - nm
+        - objcopy
+        - objdump
+        - strip
+        - as
+        - size
+        - dwp
 
     Args:
-        tools: The ctx tool list
+        compiler_paths: The ctx tool list
     Returns:
         The list of tool_path
     """
+    type_to_name = {
+        "cpp": "cpp",
+        "cc": "gcc",
+        "cxx": "g++",
+        "cov": "cov",
+        "ar": "ar",
+        "ld": "ld",
+        "nm": "nm",
+        "objcopy": "objcopy",
+        "objdump": "objdump",
+        "strip": "strip",
+        "as": "as",
+        "size": "size",
+        "dwp": "dwp",
+    }
     return [
-        tool_path(name = name, path = path)
-        for name, path in tools.items()
+        tool_path(name = type_to_name[tool_type], path = path)
+        for tool_type, path in compiler_paths.items()
     ]
