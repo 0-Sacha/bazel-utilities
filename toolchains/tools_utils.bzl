@@ -67,7 +67,7 @@ def compiler_tool_name(toolchain_bins_names, tool_type, default = None, fallback
         fail("{} Not Found in the tools names dicts".format(tool_type))
     return base_name + toolchain_bins_names.get(default, default)
 
-def toolchain_tool_path(toolchain_bins, tool_name):
+def toolchain_bins_get_tool(toolchain_bins, tool_name):
     """Tool Path
 
     This function return the tool path relative to the toolchain external/
@@ -82,12 +82,12 @@ def toolchain_tool_path(toolchain_bins, tool_name):
     matchs = []
     for file in toolchain_bins:
         if file.basename == tool_name:
-            return file.path
+            return file
     tool_name_woext = tool_name.split('.')[0]
     for file in toolchain_bins:
         file_woext = file.basename.split('.')[0]
         if file_woext == tool_name_woext:
-            return file.path
+            return file
         if file_woext.startswith(tool_name_woext):
             matchs.append(file)
 
@@ -96,7 +96,7 @@ def toolchain_tool_path(toolchain_bins, tool_name):
     
     if len(matchs) > 1:
         print("Warrning: multiple Tool Found for {} !!. Keeping first one : {}".format(tool_name, matchs[0])) # buildifier: disable=print
-    return matchs[0].path
+    return matchs[0]
 
 def _get_path_fixed(path):
     path = path.replace("\\", "/")
@@ -107,14 +107,13 @@ def _get_path_fixed(path):
         return "/".join(segments[2:])
     return path
 
-def link_actions_to_tool_bins(toolchain_bins, toolchain_bins_names, tool_type, action_names, **kwargs):
+def link_actions_to_tool(toolchain_tools, tool_type, action_names, **kwargs):
     """Create an list of action_config
 
     This function create an list of action_config
 
     Args:
-        toolchain_bins: The rule context toolchain_bins
-        toolchain_bins_names: dict of names of the toolchains binaries
+        toolchain_tools: The toolchain_tools dict
         tool_type: The tool_type
         action_names: The list of all action_name that need to be created
         **kwargs: kwargs to be forwarded to action_config
@@ -122,49 +121,20 @@ def link_actions_to_tool_bins(toolchain_bins, toolchain_bins_names, tool_type, a
     Returns:
         The list of all action_config that have been created
     """
-    path = toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, tool_type))
-    if path == None:
-        fail("{} Resulted in an empty path".format(tool_type))
     action_configs = []
     for action_name in action_names:
         action_configs.append(
             action_config(
                 action_name = action_name,
-                tools = [ tool(path = _get_path_fixed(path)) ],
+                tools = [
+                    toolchain_tools[tool_type]
+                ],
                 **kwargs
             )
         )
     return action_configs
 
-def link_actions_to_tool_paths(toolchain_paths, tool_type, action_names, **kwargs):
-    """Create an list of action_config
-
-    This function create an list of action_config
-
-    Args:
-        toolchain_paths: The rule context toolchain_paths dict
-        tool_type: The tool_type
-        action_names: The list of all action_name that need to be created
-        **kwargs: kwargs to be forwarded to action_config
-
-    Returns:
-        The list of all action_config that have been created
-    """
-    path = toolchain_paths[tool_type]
-    if path == None:
-        fail("{} Resulted in an empty path".format(tool_type))
-    action_configs = []
-    for action_name in action_names:
-        action_configs.append(
-            action_config(
-                action_name = action_name,
-                tools = [ tool(path = _get_path_fixed(path)) ],
-                **kwargs
-            )
-        )
-    return action_configs
-
-def toolchain_paths_from_bins(toolchain_bins, toolchain_bins_paths):
+def toolchain_tools_from_bins(toolchain_bins, toolchain_bins_paths):
     """Create the toolchain's tools dict
 
     Args:
@@ -174,8 +144,7 @@ def toolchain_paths_from_bins(toolchain_bins, toolchain_bins_paths):
     Returns:
         The toolchain's tools list
     """
-    
-    toolchain_paths = {}
+    toolchain_tools = {}
 
     tool_index = 0
 
@@ -183,45 +152,56 @@ def toolchain_paths_from_bins(toolchain_bins, toolchain_bins_paths):
         if tool_type not in TOOLCHAIN_BIN_TYPE:
             print("Toolchain binaries: not supported tool_type: {}".format(tool_type)) # buildifier: disable=print
         
-        if tool_type in toolchain_paths:
+        if tool_type in toolchain_tools:
             print("Toolchain binaries: tool_type: {} already defined, Skipping".format(tool_type)) # buildifier: disable=print
             continue
         
-        toolchain_paths[tool_type] = toolchain_bins_paths[tool_index].path
+        toolchain_tools[tool_type] = struct(
+            type_name = "tool",
+            tool = toolchain_bins_paths[tool_index],
+        )
 
         tool_index += 1
 
-    return toolchain_paths
+    return toolchain_tools
 
-def toolchain_paths_from_bins_grp(toolchain_bins, toolchain_bins_names):
+def toolchain_tools_from_paths(toolchain_paths):
     """Create the toolchain's tools dict
 
     Args:
-        toolchain_bins: The rule context toolchain_bins
-        toolchain_bins_names: dict of names of the toolchains binaries
+        toolchain_paths: The rule context toolchain_paths dict
+
+    Returns:
+        The toolchain's tools list
+    """
+    toolchain_tools = {}
+
+    for tool_type, tool_path in toolchain_paths.items():
+        if tool_type not in TOOLCHAIN_BIN_TYPE:
+            print("Toolchain binaries: not supported tool_type: {}".format(tool_type)) # buildifier: disable=print
+        
+        if tool_type in toolchain_tools:
+            print("Toolchain binaries: tool_type: {} already defined, Skipping".format(tool_type)) # buildifier: disable=print
+            continue
+        
+        toolchain_tools[tool_type] = tool(path = tool_path)
+
+    return toolchain_tools
+
+def toolchain_path_from_bins(toolchain_bins, toolchain_bins_paths):
+    """Create the toolchain's tools dict
+
+    Args:
+        toolchain_bins: The rule context toolchain_bins dict
+        toolchain_bins_paths: toolchain_bins_paths
 
     Returns:
         The toolchain's tools list
     """
     toolchain_paths = {}
-    
-    toolchain_paths["cpp"] =     toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, "cpp"))
-    toolchain_paths["cc"] =      toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, "cc"))
-    toolchain_paths["cxx"] =     toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, "cxx"))
-    toolchain_paths["as"] =      toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, "as"))
-    toolchain_paths["ar"] =      toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, "ar"))
-    toolchain_paths["ld"] =      toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, "ld"))
-    
-    toolchain_paths["objcopy"] = toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, "objcopy"))
-    toolchain_paths["strip"] =   toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, "strip"))
-    
-    toolchain_paths["cov"] =     toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, "cov"))
-    
-    toolchain_paths["size"] =    toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, "size"))
-    toolchain_paths["nm"] =      toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, "nm"))
-    toolchain_paths["objdump"] = toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, "objdump"))
-    toolchain_paths["dwp"] =     toolchain_tool_path(toolchain_bins, compiler_tool_name(toolchain_bins_names, "dwp"))
-
+    toolchain_tools = toolchain_tools_from_bins(toolchain_bins, toolchain_bins_paths)
+    for tool_type, tool_data in toolchain_tools.items():
+        toolchain_paths[tool_type] = _get_path_fixed(tool_data.tool.path)
     return toolchain_paths
 
 def toolchain_ctx_tool_paths(toolchain_paths):

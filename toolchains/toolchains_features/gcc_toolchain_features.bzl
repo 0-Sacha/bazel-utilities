@@ -70,7 +70,7 @@ def toolchains_tools_features_config_gcc(ctx):
             flag_sets = [
                 flag_set(
                     actions = TOOLCHAIN_ACTIONS.assemble,
-                    flag_groups = [ flag_group(flags = [ "-S" ]) ],
+                    flag_groups = [ flag_group(flags = [ "-c" ]) ],
                 ),
             ],
         ),
@@ -276,7 +276,7 @@ def toolchains_tools_features_config_gcc(ctx):
             enabled = True,
             flag_sets = [
                 flag_set(
-                    actions = CC_ACTIONS.cc_compile,
+                    actions = CC_ACTIONS.cc_compile + CC_ACTIONS.cc_assemble,
                     flag_groups = [
                         flag_group(
                             flags = ["%{source_file}"],
@@ -291,7 +291,7 @@ def toolchains_tools_features_config_gcc(ctx):
             enabled = True,
             flag_sets = [
                 flag_set(
-                    actions = CC_ACTIONS.cc_compile,
+                    actions = CC_ACTIONS.cc_compile + CC_ACTIONS.cc_assemble,
                     flag_groups = [
                         flag_group(
                             flags = ["-S"],
@@ -345,7 +345,7 @@ def toolchains_tools_features_config_gcc(ctx):
             enabled = True,
             flag_sets = [
                 flag_set(
-                    actions = CC_ACTIONS.cc_compile,
+                    actions = CC_ACTIONS.cc_compile + CC_ACTIONS.cc_assemble,
                     flag_groups = [
                         flag_group(
                             flags = ["-gsplit-dwarf", "-g"],
@@ -398,7 +398,7 @@ def toolchains_tools_features_config_gcc(ctx):
             enabled = True,
             flag_sets = [
                 flag_set(
-                    actions = CC_ACTIONS.cc_compile,
+                    actions = CC_ACTIONS.cc_preprocessor,
                     flag_groups = [
                         flag_group(
                             flags = ["-iquote", "%{quote_include_paths}"],
@@ -424,7 +424,7 @@ def toolchains_tools_features_config_gcc(ctx):
             enabled = True,
             flag_sets = [
                 flag_set(
-                    actions = CC_ACTIONS.cc_compile,
+                    actions = CC_ACTIONS.cc_preprocessor,
                     flag_groups = [
                         flag_group(
                             flags = ["-include", "%{includes}"],
@@ -440,7 +440,7 @@ def toolchains_tools_features_config_gcc(ctx):
             enabled = True,
             flag_sets = [
                 flag_set(
-                    actions = CC_ACTIONS.cc_compile,
+                    actions = CC_ACTIONS.cc_preprocessor,
                     flag_groups = ([
                         flag_group(
                             flags = [ "-I " + includedir for includedir in ctx.attr.includedirs ],
@@ -458,7 +458,7 @@ def toolchains_tools_features_config_gcc(ctx):
             enabled = True,
             flag_sets = [
                 flag_set(
-                    actions = CC_ACTIONS.cc_compile,
+                    actions = CC_ACTIONS.cc_compile + CC_ACTIONS.cc_assemble,
                     flag_groups = [
                         flag_group(
                             flags = ["%{unfiltered_compile_flags}"],
@@ -931,7 +931,7 @@ def toolchains_tools_features_config_gcc(ctx):
             enabled = True,
             flag_sets = [
                 flag_set(
-                    actions = CC_ACTIONS.cc_compile + CC_ACTIONS.cc_link,
+                    actions = CC_ACTIONS.cc_compile + CC_ACTIONS.cc_assemble + CC_ACTIONS.cc_link,
                     flag_groups = [
                         flag_group(
                             flags = ["--sysroot=%{sysroot}"],
@@ -946,7 +946,7 @@ def toolchains_tools_features_config_gcc(ctx):
             enabled = True,
             flag_sets = [
                 flag_set(
-                    actions = CC_ACTIONS.cc_compile,
+                    actions = CC_ACTIONS.cc_compile + CC_ACTIONS.cc_assemble,
                     flag_groups = [
                         flag_group(
                             flags = ["-frandom-seed=%{output_file}"],
@@ -1019,7 +1019,7 @@ def toolchains_tools_features_config_gcc(ctx):
             enabled = True,
             flag_sets = [
                 flag_set(
-                    actions = CC_ACTIONS.cc_compile,
+                    actions = CC_ACTIONS.cc_compile + CC_ACTIONS.cc_assemble,
                     flag_groups = [
                         flag_group(
                             flags = ["-fPIC"],
