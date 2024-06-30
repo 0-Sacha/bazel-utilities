@@ -13,8 +13,7 @@ COMPILER_FILTER_FLAGS = [
 ]
 
 TIDY_FORCE_FLAGS = [
-    "--checks=-clang-diagnostic-builtin-macro-redefined",
-    "--warnings-as-errors=-clang-diagnostic-builtin-macro-redefined",
+   "-clang-diagnostic-pragma-once-outside-header"
 ]
 
 def _execute_clang_tidy(ctx,
@@ -25,21 +24,21 @@ def _execute_clang_tidy(ctx,
 
     local_run = len(ctx.files._clang_tidy_executable) == 0
 
-    report_file = ctx.actions.declare_file(file.path + ".clang_tidy.yaml")
+    report_file = ctx.actions.declare_file("clang_tidy/" + file.path + ".yaml")
     
     args = ctx.actions.args()
 
-    args.add(report_file.path)
-    if (local_run):
-        args.add("clang-tidy")
-    else:
-        args.add(ctx.files._clang_tidy_executable[0])
-
     # clang-tidy args
     args.add("--config-file", ctx.file._clang_tidy_config.path)
-    args.add("--export-fixes", report_file.path)
+    if ctx.attr.report_to_file:
+        args.add("--export-fixes", report_file.path)
     args.add(file.path)
-    args.add_all(TIDY_FORCE_FLAGS)
+
+    args.add("--checks={}".format(",".join(TIDY_FORCE_FLAGS)))
+    args.add("--warnings-as-errors={}".format(",".join(TIDY_FORCE_FLAGS)))
+
+    if ctx.attr.system_header_errors:
+        args.add("-system-headers")
 
     # compiler args
     args.add("--")
@@ -52,16 +51,19 @@ def _execute_clang_tidy(ctx,
     args.add_all(compilation_context.quote_includes.to_list(), before_each = "-iquote")
     args.add_all(compilation_context.system_includes.to_list(), before_each = "-isystem")
 
-    ctx.actions.run(
+    ctx.actions.run_shell(
         mnemonic = "ClangTidy",
         inputs = [ ctx.file._clang_tidy_config ],
         outputs = [ report_file ],
-        tools = [ ctx.file._call_wrapper ] + ([ctx.files._clang_tidy_executable[0] ] if local_run == False else []),
-        executable = ctx.file._call_wrapper,
+        tools = [] if local_run else [ ctx.files._clang_tidy_executable[0] ],
         arguments = [args],
+        command = "touch {report_path} && {clang_tidy} $@".format(
+            report_path = report_file.path,
+            clang_tidy = "clang-tidy" if local_run else ctx.files._clang_tidy_executable[0],
+        ),
     )
 
-    return report_file
+    return [ report_file ]
 
 def _safe_flags(flags):
     # Some flags might be used by GCC, but not understood by Clang.
@@ -92,15 +94,12 @@ def _clang_tidy_impl(target, ctx):
 
     report_files = []
     for file in files:
-        if file_extention_match(file, CC_HEADER) == False:
-            report_files.append(
-                _execute_clang_tidy(
-                    ctx = ctx,
-                    file = file,
-                    compilation_context = compilation_context,
-                    flags = cxxopts
-                )
-            )
+        report_files += _execute_clang_tidy(
+            ctx = ctx,
+            file = file,
+            compilation_context = compilation_context,
+            flags = cxxopts
+        )
 
     return [
         OutputGroupInfo(report = depset(direct = report_files)),
@@ -109,10 +108,12 @@ def _clang_tidy_impl(target, ctx):
 clang_tidy = aspect(
     implementation = _clang_tidy_impl,
     attrs = {
+        "report_to_file": attr.bool(default = False),
+        "enable_error": attr.bool(default = False),
+        "system_header_errors": attr.bool(default = False),
+
         "_clang_tidy_executable": attr.label(default = Label("@bazel_utilities//tools:clang_tidy_executable")),
         "_clang_tidy_config": attr.label(allow_single_file = True, default = Label("@bazel_utilities//tools:clang_tidy_config")),
-
-        "_call_wrapper": attr.label(allow_single_file = True, default = Label("@bazel_utilities//tools:call_wrapper")),
     },
     fragments = ["cpp"],
     toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
