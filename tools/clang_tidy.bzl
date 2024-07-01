@@ -94,6 +94,8 @@ def _clang_tidy_impl(target, ctx):
 
     report_files = []
     for file in files:
+        if ctx.attr.skip_headers and file_extention_match(file, CC_HEADER):
+            continue
         report_files += _execute_clang_tidy(
             ctx = ctx,
             file = file,
@@ -111,6 +113,8 @@ clang_tidy = aspect(
         "report_to_file": attr.bool(default = False),
         "enable_error": attr.bool(default = False),
         "system_header_errors": attr.bool(default = False),
+
+        "skip_headers": attr.bool(default = False),
 
         "_clang_tidy_executable": attr.label(default = Label("@bazel_utilities//tools:clang_tidy_executable")),
         "_clang_tidy_config": attr.label(allow_single_file = True, default = Label("@bazel_utilities//tools:clang_tidy_config")),
