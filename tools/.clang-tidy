@@ -1,0 +1,64 @@
+---
+FormatStyle: none
+User: ''
+
+# TODO: check for -llvmlibc-implementation-in-namespace
+Checks: >
+  *
+  -clang-diagnostic-builtin-macro-redefined
+  -clang-diagnostic-unknown-warning-option
+  -llvm-header-guard
+  -llvmlibc-restrict-system-libc-headers
+  -llvmlibc-implementation-in-namespace
+  -misc-non-private-member-variables-in-classes
+
+HeaderFilterRegex: '.*'
+
+WarningsAsErrors: >
+  -clang-diagnostic-builtin-macro-redefined
+  -clang-diagnostic-unknown-warning-option
+
+CheckOptions:
+  - key: readability-identifier-naming.NamespaceCase
+    value: CamelCase
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.PrivateMemberCase
+    value: CamelBack
+  - key: readability-identifier-naming.PrivateMemberPrefix
+    value: m_
+  - key: readability-identifier-naming.PublicMemberCase
+    value: CamelBack
+  - key: readability-identifier-naming.FunctionCase
+    value: camelBack
+  - key: readability-identifier-naming.VariableCase
+    value: camelBack
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.ConstantCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.LocalConstantCase
+    value: camelBack
+  - key: readability-identifier-naming.ParameterCase
+    value: camelBack
+  - key: readability-identifier-naming.TypeAliasCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypedefCase
+    value: CamelCase
+  - key: readability-identifier-naming.ClassEnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.ClassMemberCase
+    value: camelBack
+  - key: readability-identifier-naming.FileCase
+    value: CamelCase
+  - key: readability-identifier-naming.MacroCase
+    value: UPPER_CASE
+  - key: readability-identifier-naming.NestedNamespaceCase
+    value: CamelCase
+  - key: readability-identifier-naming.NamespaceDirCase
+    value: CamelCase
+...

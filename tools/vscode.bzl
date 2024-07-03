@@ -1,4 +1,6 @@
-""
+"""
+This file define VSCode rules to generate c_cpp_properties / tasks and launch settings files
+"""
 
 load("@bazel_skylib//lib:sets.bzl", "sets")
 
@@ -13,6 +15,10 @@ VSCodeFlagsInfo = provider("", fields = {
 })
 
 def _impl_vscode_flags(_target, ctx):
+    # Ignore if it's not a C/C++ target
+    if not CcInfo in target:
+        return []
+
     includes = []
     defines = []
     flags = []
@@ -24,10 +30,6 @@ def _impl_vscode_flags(_target, ctx):
 
     if hasattr(ctx.rule.attr, 'copts'):
         flags += ctx.rule.attr.copts
-    if hasattr(ctx.rule.attr, 'conlyopts'):
-        flags += ctx.rule.attr.conlyopts
-    if hasattr(ctx.rule.attr, 'cxxopts'):
-        flags += ctx.rule.attr.cxxopts
     if hasattr(ctx.rule.attr, 'linkopts'):
         flags += ctx.rule.attr.linkopts
 
