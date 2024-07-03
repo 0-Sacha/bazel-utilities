@@ -220,6 +220,8 @@ cc_toolchain_config = rule(
         'toolchain_libs': attr.string_list(default = []),
 
         'artifacts_patterns_packed' : attr.string_list(default = []),
+
+        'envars' : attr.string_dict(default = {}),
         
         # TODO:
         'xflags_packed': attr.string_dict(default = {}),

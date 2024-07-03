@@ -1047,6 +1047,13 @@ def toolchains_tools_features_config_gcc(ctx):
 
 
     ########## Coverage ##########
+    coverage_compile_options = [ "--coverage" ]
+    coverage_link_options = [ "--coverage" ]
+    
+    if ctx.attr.envars["BAZEL_USE_LLVM_NATIVE_COVERAGE"] == '1':
+        coverage_compile_options = [ "-fprofile-instr-generate",  "-fcoverage-mapping" ]
+        coverage_link_options =  [ "-fprofile-instr-generate" ]
+    
     features += [
         feature(
             name = "coverage",
@@ -1054,24 +1061,24 @@ def toolchains_tools_features_config_gcc(ctx):
             flag_sets = [
                 flag_set(
                     actions = CC_ACTIONS.cc_compile,
-                    flag_groups = [],
+                    flag_groups = [flag_group(flags = coverage_compile_options)],
                 ),
                 flag_set(
                     actions = CC_ACTIONS.cc_link,
-                    flag_groups = [],
+                    flag_groups = [flag_group(flags = coverage_link_options)],
                 ),
             ],
         ),
 
         feature(
             name = "gcc_coverage_map_format",
-            enabled = True,
+            provides = ["coverage_map_forma"],
             flag_sets = [
                 flag_set(
                     actions = CC_ACTIONS.cc_compile,
                     flag_groups = [
                         flag_group(
-                            flags = ["-fprofile-arcs", "-ftest-coverage", "-g"],
+                            flags = [ "-fprofile-arcs", "-ftest-coverage" ],
                             expand_if_available = "gcov_gcno_file",
                         ),
                     ],
@@ -1080,47 +1087,32 @@ def toolchains_tools_features_config_gcc(ctx):
                     actions = CC_ACTIONS.cc_link,
                     flag_groups = [
                         flag_group(
-                            flags = ["--coverage"],
+                            flags = [ "--coverage" ],
                             expand_if_available = "gcov_gcno_file",
                         )
                     ],
                 ),
             ],
-            requires = [feature_set(features = ["coverage"])],
+            requires = [feature_set(features = [ "coverage" ])],
         ),
         feature(
             name = "llvm_coverage_map_format",
+            provides = ["coverage_map_forma"],
             flag_sets = [
                 flag_set(
                     actions = CC_ACTIONS.cc_compile,
                     flag_groups = [
                         flag_group(
-                            flags = ["-fprofile-instr-generate", "-fcoverage-mapping", "-g"],
+                            flags = [ "-fprofile-instr-generate", "-fcoverage-mapping" ],
                         ),
                     ],
                 ),
                 flag_set(
                     actions = CC_ACTIONS.cc_link,
-                    flag_groups = [flag_group(flags = ["-fprofile-instr-generate"])],
+                    flag_groups = [flag_group(flags = [ "-fprofile-instr-generate" ])],
                 ),
             ],
-            requires = [feature_set(features = ["coverage"])],
-        ),
-
-        feature(
-            name = "coverage_prefix_map",
-            enabled = True,
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_compile,
-                    flag_groups = [
-                        flag_group(
-                            flags = ["-fcoverage-prefix-map=__BAZEL_EXECUTION_ROOT__=."],
-                        ),
-                    ],
-                ),
-            ],
-            requires = [feature_set(features = ["coverage"])],
+            requires = [feature_set(features = [ "coverage" ])],
         ),
     ]
 
