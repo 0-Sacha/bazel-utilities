@@ -59,7 +59,7 @@ def _clang_format_impl(target, ctx):
         return []
 
     # Tag to disable aspect
-    ignore_tags = [ "no-clang_format" ]
+    ignore_tags = [ "no-clang-format" ]
     for tag in ignore_tags:
         if tag in ctx.rule.attr.tags:
             return []

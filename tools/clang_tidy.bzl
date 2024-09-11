@@ -81,7 +81,7 @@ def _clang_tidy_impl(target, ctx):
         return []
 
     # Tag to disable aspect
-    ignore_tags = [ "no-clang_tidy" ]
+    ignore_tags = [ "no-clang-tidy" ]
     for tag in ignore_tags:
         if tag in ctx.rule.attr.tags:
             return []
@@ -120,5 +120,6 @@ clang_tidy = aspect(
         "_clang_tidy_config": attr.label(allow_single_file = True, default = Label("@bazel_utilities//tools:clang_tidy_config")),
     },
     fragments = ["cpp"],
+    attr_aspects = ['deps'],
     toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
 )
