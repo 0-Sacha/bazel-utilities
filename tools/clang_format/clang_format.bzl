@@ -83,8 +83,8 @@ clang_format = aspect(
         "report_to_file": attr.bool(default = False),
         "enable_error": attr.bool(default = False),
 
-        "_clang_format_executable": attr.label(default = Label("@bazel_utilities//tools:clang_format_executable")),
-        "_clang_format_config": attr.label(allow_single_file = True, default = Label("@bazel_utilities//tools:clang_format_config")),
+        "_clang_format_executable": attr.label(default = Label("@bazel_utilities//tools/clang_format:clang_format_executable")),
+        "_clang_format_config": attr.label(allow_single_file = True, default = Label("@bazel_utilities//tools/clang_format:clang_format_config")),
     },
     fragments = ["cpp"],
     toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],

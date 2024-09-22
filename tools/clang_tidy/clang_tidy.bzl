@@ -116,8 +116,8 @@ clang_tidy = aspect(
 
         "skip_headers": attr.bool(default = False),
 
-        "_clang_tidy_executable": attr.label(default = Label("@bazel_utilities//tools:clang_tidy_executable")),
-        "_clang_tidy_config": attr.label(allow_single_file = True, default = Label("@bazel_utilities//tools:clang_tidy_config")),
+        "_clang_tidy_executable": attr.label(default = Label("@bazel_utilities//tools/clang_tidy:clang_tidy_executable")),
+        "_clang_tidy_config": attr.label(allow_single_file = True, default = Label("@bazel_utilities//tools/clang_tidy:clang_tidy_config")),
     },
     fragments = ["cpp"],
     attr_aspects = ['deps'],

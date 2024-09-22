@@ -1,9 +1,0 @@
-common:clang_tidy --aspects @bazel_utilities//tools:clang_tidy.bzl%clang_tidy
-common:clang_tidy --output_groups=+report
-common:clang_tidy --spawn_strategy=local
-
-common:clang_format --aspects @bazel_utilities//tools:clang_format.bzl%clang_format
-common:clang_format --output_groups=+report
-common:clang_format --spawn_strategy=local
-
-common:tidy_format_error --aspects_parameters=enable_error=True
