@@ -1,0 +1,3 @@
+common:compile_commands --aspects @bazel_utilities//tools/compile_commands:compile_commands.bzl%compile_commands
+common:compile_commands --output_groups=+report
+common:compile_commands --spawn_strategy=local
