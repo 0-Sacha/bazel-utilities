@@ -12,6 +12,7 @@ label_flag(
     visibility = ["//visibility:public"],
 )
 
+
 filegroup(
     name = "clang_tidy_executable_default",
     srcs = [],  # default system clang-tidy

@@ -5,7 +5,6 @@ This file define a rule to execute clang_format
 load("@bazel_utilities//tools:utils.bzl", "rule_files")
 
 def _execute_clang_format(ctx, file):
-
     local_run = len(ctx.files._clang_format_executable) == 0
 
     report_file = ctx.actions.declare_file("clang_format/" + file.path)
@@ -27,12 +26,9 @@ def _execute_clang_format(ctx, file):
         ),
     )
 
-    fmt = "touch {diff_path} && diff {file} {report_path}"
     diff_file = ctx.actions.declare_file("clang_format/" + file.path + ".diff")
 
-    if ctx.attr.report_to_file:
-        fmt += " > {diff_path}"
-
+    fmt = "diff {file} {report_path} | tee {diff_path}"
     if ctx.attr.enable_error == False:
         fmt += " ; exit 0"
     
@@ -66,21 +62,24 @@ def _clang_format_impl(target, ctx):
 
     files = rule_files(ctx.rule)
 
-    report_files = []
+    reports = []
     for file in files:
-        report_files += _execute_clang_format(
+        reports += _execute_clang_format(
             ctx = ctx,
             file = file,
         )
 
+    exec_report = ctx.actions.declare_file("clang_format/" + ctx.label.name + ".exec_report.json")
+    ctx.actions.write(output = exec_report, content = json.encode_indent([file.path for file in files], indent = "    "))
+    reports.append(exec_report)
+
     return [
-        OutputGroupInfo(report = depset(direct = report_files)),
+        OutputGroupInfo(report = depset(direct = reports)),
     ]
 
 clang_format = aspect(
     implementation = _clang_format_impl,
     attrs = {
-        "report_to_file": attr.bool(default = False),
         "enable_error": attr.bool(default = False),
 
         "_clang_format_executable": attr.label(default = Label("@bazel_utilities//tools/clang_format:clang_format_executable")),

@@ -3,59 +3,49 @@
 import os
 import shutil
 import subprocess
+import glob
 import argparse
+import json
 
-def replace_files(target_dir, format_dir):
-    for root, dirs, files in os.walk(format_dir):
-        rel_path = os.path.relpath(root, format_dir)
-        target_path = os.path.join(target_dir, rel_path)
+def replace_files(workspace_root, files_list, dry_run = False):
+    formatted_file_dir = os.path.join(workspace_root, "bazel-bin", "clang_format")
+    if not os.path.exists(formatted_file_dir):
+        print("\033[0;31m", ">>> No ClangFormat folder found at {} !".format(formatted_file_dir), "\033[0m")
+        return []
 
-        if not os.path.exists(target_path):
+    for file in files_list:
+        src_file = os.path.join(formatted_file_dir, file)
+        diff_file = os.path.join(formatted_file_dir, file + ".diff")
+        dst_file = os.path.join(workspace_root, file)
+        
+        if not os.path.exists(dst_file):
+            print("\033[0;31m", ">>> Try to update a file that doesn't exist: {} !".format(dst_file), "\033[0m")
             continue
 
-        for file in files:
-            src_file = os.path.join(root, file)
-            dst_file = os.path.join(target_path, file)
-            
-            if not os.path.exists(dst_file):
-                continue
-
-            print(f"ClangFormat Applied: {dst_file}")
+        if os.path.getsize(diff_file) == 0:
+            continue
+        
+        print(f"  * {src_file} -> {dst_file}")
+        if dry_run == False:
             shutil.copy2(src_file, dst_file)
 
-def exec_clang_format(target, local):
-    args = [
-        "bazelisk", "build", target,
-        "--aspects=@bazel_utilities//tools:clang_format.bzl%clang_format", "--output_groups=+report"
-    ]
-    if local:
-        args.append("--spawn_strategy=local")
-    result = subprocess.run(args, text=True)
-
-def clang_format_directory():
-    result = subprocess.run(["bazelisk", "info", "bazel-bin"], stdout=subprocess.PIPE, text=True)
-    format_directory = os.path.join(result.stdout.strip(), "clang_format")
-    return format_directory
-
 def main():
-    parser = argparse.ArgumentParser(description='Apply clang-format to the project using bazel_utilities clang-format support')
-    parser.add_argument('-t', '--target', required=True, help='Name of the target')
-    parser.add_argument('--local', action='store_true', help='Use local clang-format')
+    parser = argparse.ArgumentParser(description='Apply all changes computed by the clang-format aspect to the project')
+    parser.add_argument('--dry_run', default=False, help='dry run, only show actions that will be done')
     args = parser.parse_args()
+        
+    workspace_root = os.getenv('BUILD_WORKSPACE_DIRECTORY')
 
-    # exec_clang_format(args.target, args.local)
+    print("\033[0;32m", ">>> Launch ClangFormatApply on {} {}!".format(workspace_root, "as dry-run " if args.dry_run else ""), "\033[0m")
 
-    clang_format_dir = clang_format_directory()
-    project_dir = '.'
-
-    if not clang_format_dir:
-        print("Error: 'bazelisk info bazel-bin' did not return a valid directory.")
-        return
-    if not os.path.exists(clang_format_dir):
-        print(f"Error: Format directory '{clang_format_dir}' does not exist.")
-        return
-
-    replace_files(project_dir, clang_format_dir)
+    for exec_report_file in glob.glob(os.path.join(workspace_root, "bazel-bin", "clang_format", '*.exec_report.json')):
+        files_list = []
+        with open(exec_report_file) as exec_report_content:
+            files_list = json.load(exec_report_content)
+            exec_report_content.close()
+        print("\033[0;32m", "    - {}".format(os.path.basename(exec_report_file).replace('.exec_report.json', '')), "\033[0m")
+        replace_files(workspace_root, files_list, args.dry_run)
+    
 
 if __name__ == "__main__":
     main()
