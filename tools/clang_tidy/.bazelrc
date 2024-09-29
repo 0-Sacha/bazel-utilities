@@ -1,0 +1,4 @@
+common:clang_tidy --aspects @bazel_utilities//tools/clang_tidy:clang_tidy.bzl%clang_tidy
+common:clang_tidy --output_groups=+report
+common:clang_tidy --spawn_strategy=local
+common:clang_tidy --aspects_parameters=skip_headers=True

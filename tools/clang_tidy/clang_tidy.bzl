@@ -30,12 +30,15 @@ def _execute_clang_tidy(ctx,
 
     # clang-tidy args
     args.add("--config-file", ctx.file._clang_tidy_config.path)
-    if ctx.attr.report_to_file:
-        args.add("--export-fixes", report_file.path)
+    args.add("--export-fixes", report_file.path)
     args.add(file.path)
 
     args.add("--checks={}".format(",".join(TIDY_FORCE_FLAGS)))
-    args.add("--warnings-as-errors={}".format(",".join(TIDY_FORCE_FLAGS)))
+
+    if ctx.attr.stop_at_error:
+        args.add("--warnings-as-errors=*")
+    else:
+        args.add("--warnings-as-errors={}".format(",".join(TIDY_FORCE_FLAGS)))
 
     if ctx.attr.system_header_errors:
         args.add("-system-headers")
@@ -81,7 +84,7 @@ def _clang_tidy_impl(target, ctx):
         return []
 
     # Tag to disable aspect
-    ignore_tags = [ "no-clang_tidy" ]
+    ignore_tags = [ "no-clang-tidy" ]
     for tag in ignore_tags:
         if tag in ctx.rule.attr.tags:
             return []
@@ -96,6 +99,9 @@ def _clang_tidy_impl(target, ctx):
     for file in files:
         if ctx.attr.skip_headers and file_extention_match(file, CC_HEADER):
             continue
+        flags = cxxopts
+        if file_extention_match(file, C_ALLOWED_FILES_EXT):
+            flags = copts
         report_files += _execute_clang_tidy(
             ctx = ctx,
             file = file,
@@ -110,15 +116,14 @@ def _clang_tidy_impl(target, ctx):
 clang_tidy = aspect(
     implementation = _clang_tidy_impl,
     attrs = {
-        "report_to_file": attr.bool(default = False),
-        "enable_error": attr.bool(default = False),
+        "stop_at_error": attr.bool(default = False),
         "system_header_errors": attr.bool(default = False),
-
         "skip_headers": attr.bool(default = False),
 
-        "_clang_tidy_executable": attr.label(default = Label("@bazel_utilities//tools:clang_tidy_executable")),
-        "_clang_tidy_config": attr.label(allow_single_file = True, default = Label("@bazel_utilities//tools:clang_tidy_config")),
+        "_clang_tidy_executable": attr.label(default = Label("@bazel_utilities//tools/clang_tidy:clang_tidy_executable")),
+        "_clang_tidy_config": attr.label(allow_single_file = True, default = Label("@bazel_utilities//tools/clang_tidy:clang_tidy_config")),
     },
     fragments = ["cpp"],
+    attr_aspects = ['deps'],
     toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
 )

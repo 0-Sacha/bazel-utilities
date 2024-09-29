@@ -1,0 +1,3 @@
+common:clang_format --aspects @bazel_utilities//tools/clang_format:clang_format.bzl%clang_format
+common:clang_format --output_groups=+report
+common:clang_format --spawn_strategy=local
