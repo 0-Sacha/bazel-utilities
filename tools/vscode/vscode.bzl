@@ -15,10 +15,6 @@ VSCodeFlagsInfo = provider("", fields = {
 })
 
 def _impl_vscode_flags(_target, ctx):
-    # Ignore if it's not a C/C++ target
-    if not CcInfo in target:
-        return []
-
     includes = []
     defines = []
     flags = []
@@ -166,7 +162,7 @@ VSCodeConfigJsonInfo = provider("", fields = {
     "path": "",
 })
 
-def _impl_vscode_configs_json(ctx):
+def _gen_vscode_configs_json(ctx):
     c_cpp_properties_file = {
         "version": 4,
         "configurations": [ ]
@@ -200,26 +196,12 @@ def _impl_vscode_configs_json(ctx):
 
         c_cpp_properties_file["configurations"].append(toolchain_data)
 
+    c_cpp_properties_json_file = ctx.actions.declare_file(ctx.label.name + "/.vscode/c_cpp_properties.json")
     ctx.actions.write(
-        output = ctx.outputs.c_cpp_properties_json,
+        output = c_cpp_properties_json_file,
         content = json.encode_indent(c_cpp_properties_file, indent = '\t')
     )
-    
-    return [
-        VSCodeConfigJsonInfo(
-            path = ctx.outputs.c_cpp_properties_json
-        )
-    ]
-
-vscode_configs_json = rule(
-    implementation = _impl_vscode_configs_json,
-    attrs = {
-        'c_cpp_properties_json': attr.output(mandatory = True),
-        'configs': attr.label_list(mandatory = True, providers = [VSCodeConfigInfo]),
-    },
-    fragments = [],
-    provides = [VSCodeConfigJsonInfo]
-)
+    return c_cpp_properties_json_file
 
 
 #########################
@@ -274,7 +256,7 @@ VSCodeTasksJsonInfo = provider("", fields = {
     "path": "",
 })
 
-def _impl_vscode_tasks_json(ctx):
+def _gen_vscode_tasks_json(ctx):
     tasks_file = {
         "version": "2.0.0",
         "tasks": []
@@ -304,28 +286,13 @@ def _impl_vscode_tasks_json(ctx):
             }
 
         tasks_file["tasks"].append(task_data)
-        
+    
+    tasks_json_file = ctx.actions.declare_file(ctx.label.name + "/.vscode/tasks.json")
     ctx.actions.write(
-        output = ctx.outputs.tasks_json,
+        output = tasks_json_file,
         content = json.encode_indent(tasks_file, indent = '\t')
     )
-    
-    return [
-        VSCodeTasksJsonInfo(
-            path = ctx.outputs.tasks_json
-        )
-    ]
-
-vscode_tasks_json = rule(
-    implementation = _impl_vscode_tasks_json,
-    attrs = {
-        'tasks_json': attr.output(mandatory = True),
-        'tasks': attr.label_list(mandatory = True, providers = [VSCodeTaskInfo]),
-    },
-    fragments = [],
-    provides = [VSCodeTasksJsonInfo]
-)
-
+    return tasks_json_file
 
 ##########################
 ######### Launch #########
@@ -381,12 +348,9 @@ vscode_launch = rule(
 )
 
 
-VSCodeLaunchJsonInfo = provider("", fields = {
-    "path": "",
-})
 
-def _impl_vscode_launch_json(ctx):
-    launch_file = {
+def _gen_vscode_launchs_json(ctx):
+    launch_content = {
         "version": "0.2.0",
         "configurations": []
     }
@@ -404,7 +368,7 @@ def _impl_vscode_launch_json(ctx):
         "MIMode": "gdb",
     }
 
-    for _vscode_launch in ctx.attr.launch:
+    for _vscode_launch in ctx.attr.launchs:
         vscode_launch = _vscode_launch[VSCodeLaunchInfo]
         launch_data = dict(launch_template)
         
@@ -422,46 +386,77 @@ def _impl_vscode_launch_json(ctx):
             launch_data["preLaunchTask"] = vscode_launch.pre_launch_task
         launch_data["externalConsole"] = vscode_launch.external_console
         
-        launch_file["configurations"].append(launch_data)
+        launch_content["configurations"].append(launch_data)
     
+    launch_json = ctx.actions.declare_file(ctx.label.name + "/.vscode/launch.json")
     ctx.actions.write(
-        output = ctx.outputs.launch_json,
-        content = json.encode_indent(launch_file, indent = '\t')
+        output = launch_json,
+        content = json.encode_indent(launch_content, indent = '\t')
     )
+    return launch_json
+
+##############################
+######### Generation #########
+##############################
+
+def _impl_gen_vscode_files(ctx):
+    target_vscode_folder = ctx.label.name + "/.vscode"
+
+    c_cpp_properties_json_file = _gen_vscode_configs_json(ctx)
+    tasks_json_file = _gen_vscode_tasks_json(ctx)
+    launch_json_file = _gen_vscode_launchs_json(ctx)
 
     return [
-        VSCodeLaunchJsonInfo(
-            path = ctx.outputs.launch_json
+        DefaultInfo(
+            files = depset([
+                c_cpp_properties_json_file,
+                tasks_json_file,
+                launch_json_file,
+            ])
         )
     ]
 
-vscode_launch_json = rule(
-    implementation = _impl_vscode_launch_json,
+_gen_vscode_files = rule(
+    implementation = _impl_gen_vscode_files,
     attrs = {
-        'launch_json': attr.output(mandatory = True),
-        'launch': attr.label_list(mandatory = True, providers = [VSCodeLaunchInfo]),
+        'configs': attr.label_list(mandatory = True, providers = [VSCodeConfigInfo]),
+        'tasks': attr.label_list(mandatory = True, providers = [VSCodeTaskInfo]),
+        'launchs': attr.label_list(mandatory = True, providers = [VSCodeLaunchInfo]),
+        'copy': attr.bool(default = True),
     },
     fragments = [],
-    provides = [VSCodeLaunchJsonInfo]
+    provides = [DefaultInfo]
 )
 
 
-#######################
-######### All #########
-#######################
+def vscode_profil(
+        name,
+        configs,
+        tasks,
+        launchs,
+        copy = True,
+    ):
+    """Generate The .vscode folder according to the given profils
+    
+    Args:
+        name:
+        configs:
+        tasks:
+        launchs:
+        copy:
+    """
+    _gen_vscode_files(
+        name = "profil_" + name,
+        configs = configs,
+        tasks = tasks,
+        launchs = launchs,
+        copy = copy,
+    )
 
-def _impl_vscode_files(ctx):
-    # buildifier: disable=print
-    print(ctx.attr.configs[VSCodeConfigJsonInfo].path.path)
-    pass
-
-vscode_files = rule(
-    implementation = _impl_vscode_files,
-    attrs = {
-        'configs': attr.label(mandatory = True, providers = [VSCodeConfigJsonInfo]),
-        'tasks': attr.label(mandatory = True, providers = [VSCodeTasksJsonInfo]),
-        'launch': attr.label(mandatory = True, providers = [VSCodeLaunchJsonInfo]),
-    },
-    fragments = [],
-    provides = []
-)
+    native.py_binary(
+        name = name,
+        main = "@bazel_utilities//tools/vscode:copy_vscode_folder.py",
+        srcs = [ "@bazel_utilities//tools/vscode:copy_vscode_folder.py" ],
+        args = [ "--gen_folder={}".format("/profil_" + name + "/.vscode") ],
+        data = [ ":profil_" + name ],
+    )
