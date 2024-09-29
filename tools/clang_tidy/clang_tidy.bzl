@@ -30,8 +30,7 @@ def _execute_clang_tidy(ctx,
 
     # clang-tidy args
     args.add("--config-file", ctx.file._clang_tidy_config.path)
-    if ctx.attr.report_to_file:
-        args.add("--export-fixes", report_file.path)
+    args.add("--export-fixes", report_file.path)
     args.add(file.path)
 
     args.add("--checks={}".format(",".join(TIDY_FORCE_FLAGS)))
@@ -107,7 +106,7 @@ def _clang_tidy_impl(target, ctx):
             ctx = ctx,
             file = file,
             compilation_context = compilation_context,
-            flags = flags
+            flags = cxxopts
         )
 
     return [
@@ -117,7 +116,6 @@ def _clang_tidy_impl(target, ctx):
 clang_tidy = aspect(
     implementation = _clang_tidy_impl,
     attrs = {
-        "report_to_file": attr.bool(default = False),
         "stop_at_error": attr.bool(default = False),
         "system_header_errors": attr.bool(default = False),
         "skip_headers": attr.bool(default = False),
