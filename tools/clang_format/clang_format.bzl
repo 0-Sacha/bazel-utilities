@@ -29,7 +29,7 @@ def _execute_clang_format(ctx, file):
     diff_file = ctx.actions.declare_file("clang_format/" + file.path + ".diff")
 
     fmt = "diff {file} {report_path} | tee {diff_path}"
-    if ctx.attr.enable_error == False:
+    if not ctx.attr.stop_at_error:
         fmt += " ; exit 0"
     
     ctx.actions.run_shell(
@@ -80,7 +80,7 @@ def _clang_format_impl(target, ctx):
 clang_format = aspect(
     implementation = _clang_format_impl,
     attrs = {
-        "enable_error": attr.bool(default = False),
+        "stop_at_error": attr.bool(default = False),
 
         "_clang_format_executable": attr.label(default = Label("@bazel_utilities//tools/clang_format:clang_format_executable")),
         "_clang_format_config": attr.label(allow_single_file = True, default = Label("@bazel_utilities//tools/clang_format:clang_format_config")),
