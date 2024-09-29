@@ -106,7 +106,7 @@ def _clang_tidy_impl(target, ctx):
             ctx = ctx,
             file = file,
             compilation_context = compilation_context,
-            flags = cxxopts
+            flags = cxxopts  # TODO: Use copts / cxxopts according to the file extention
         )
 
     return [
