@@ -126,4 +126,5 @@ clang_tidy = aspect(
     fragments = ["cpp"],
     attr_aspects = ['deps'],
     toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
+    provides = [OutputGroupInfo],
 )

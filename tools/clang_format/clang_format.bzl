@@ -87,4 +87,5 @@ clang_format = aspect(
     },
     fragments = ["cpp"],
     toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],
+    provides = [OutputGroupInfo],
 )
