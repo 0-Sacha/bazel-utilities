@@ -399,42 +399,60 @@ def _gen_vscode_launchs_json(ctx):
 ######### Generation #########
 ##############################
 
-def _impl_gen_vscode_files(ctx):
-    target_vscode_folder = ctx.label.name + "/.vscode"
-
+def _impl_vscode_profil(ctx):
     c_cpp_properties_json_file = _gen_vscode_configs_json(ctx)
     tasks_json_file = _gen_vscode_tasks_json(ctx)
     launch_json_file = _gen_vscode_launchs_json(ctx)
-
     return [
-        DefaultInfo(
-            files = depset([
-                c_cpp_properties_json_file,
-                tasks_json_file,
-                launch_json_file,
-            ])
+        OutputGroupInfo(
+            configs = depset([c_cpp_properties_json_file]),
+            tasks = depset([tasks_json_file]),
+            launch = depset([launch_json_file]),
         )
     ]
 
-_gen_vscode_files = rule(
-    implementation = _impl_gen_vscode_files,
+vscode_profil = rule(
+    implementation = _impl_vscode_profil,
     attrs = {
         'configs': attr.label_list(mandatory = True, providers = [VSCodeConfigInfo]),
         'tasks': attr.label_list(mandatory = True, providers = [VSCodeTaskInfo]),
         'launchs': attr.label_list(mandatory = True, providers = [VSCodeLaunchInfo]),
-        'copy': attr.bool(default = True),
     },
     fragments = [],
-    provides = [DefaultInfo]
+    provides = [OutputGroupInfo],
 )
 
 
-def vscode_profil(
+def _impl_copy_vscode_wrapper(ctx):
+    config_of_profil = ctx.attr.vscode_profil[OutputGroupInfo].configs.to_list()[0]
+    
+    ctx.actions.write(
+        output = ctx.outputs.copy_script,
+        is_executable = True,
+        content = "cp -r $BUILD_WORKSPACE_DIRECTORY/{vscode_folder} $BUILD_WORKSPACE_DIRECTORY/.vscode".format(
+            vscode_folder = config_of_profil.dirname,
+        )
+    )
+    return [
+        DefaultInfo(
+            files = depset([ctx.outputs.copy_script]),
+        )
+    ]
+
+_copy_vscode_wrapper = rule(
+    implementation = _impl_copy_vscode_wrapper,
+    attrs = {
+        "copy_script": attr.output(),
+        "vscode_profil": attr.label(providers = [OutputGroupInfo]),
+    },
+    provides = [DefaultInfo],
+)
+
+def vscode_folder(
         name,
         configs,
         tasks,
         launchs,
-        copy = True,
     ):
     """Generate The .vscode folder according to the given profils
     
@@ -445,18 +463,43 @@ def vscode_profil(
         launchs:
         copy:
     """
-    _gen_vscode_files(
+    vscode_profil(
         name = "profil_" + name,
         configs = configs,
         tasks = tasks,
         launchs = launchs,
-        copy = copy,
     )
 
-    native.py_binary(
-        name = name,
-        main = "@bazel_utilities//tools/vscode:copy_vscode_folder.py",
-        srcs = [ "@bazel_utilities//tools/vscode:copy_vscode_folder.py" ],
-        args = [ "--gen_folder={}".format("/profil_" + name + "/.vscode") ],
-        data = [ ":profil_" + name ],
+    native.filegroup(
+        name = "profil_configs_" + name,
+        srcs = [":profil_" + name],
+        output_group = "configs",
     )
+    native.filegroup(
+        name = "profil_tasks_" + name,
+        srcs = [":profil_" + name],
+        output_group = "tasks",
+    )
+    native.filegroup(
+        name = "profil_launch_" + name,
+        srcs = [":profil_" + name],
+        output_group = "launch",
+    )
+
+    _copy_vscode_wrapper(
+        name = "wrapper_" + name,
+        copy_script = "copy_script_wrapper_" + name + ".sh",
+        vscode_profil = ":profil_" + name,
+    )
+
+    native.sh_binary(
+        name = name,
+        srcs = [ ":copy_script_wrapper_" + name + ".sh" ],
+        data = [
+            ":profil_configs_" + name,
+            ":profil_tasks_" + name,
+            ":profil_launch_" + name,
+            ":copy_script_wrapper_" + name + ".sh",
+        ],
+    )
+

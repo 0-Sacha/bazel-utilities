@@ -2,4 +2,9 @@
 """
 
 package(default_visibility = ["//visibility:public"])
-exports_files(["copy_vscode_folder.py"])
+
+filegroup(
+    name = "copy_vscode_folder",
+    srcs = [ "copy_vscode_folder.py" ],
+)
+
