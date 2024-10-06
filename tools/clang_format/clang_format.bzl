@@ -2,7 +2,7 @@
 This file define a rule to execute clang_format
 """
 
-load("@bazel_utilities//tools:utils.bzl", "rule_files")
+load("//tools:utils.bzl", "rule_files")
 
 def _execute_clang_format(ctx, file):
     local_run = len(ctx.files._clang_format_executable) == 0
@@ -82,8 +82,8 @@ clang_format = aspect(
     attrs = {
         "stop_at_error": attr.bool(default = False),
 
-        "_clang_format_executable": attr.label(default = Label("@bazel_utilities//tools/clang_format:clang_format_executable")),
-        "_clang_format_config": attr.label(allow_single_file = True, default = Label("@bazel_utilities//tools/clang_format:clang_format_config")),
+        "_clang_format_executable": attr.label(default = Label("//tools/clang_format:clang_format_executable")),
+        "_clang_format_config": attr.label(allow_single_file = True, default = Label("//tools/clang_format:clang_format_config")),
     },
     fragments = ["cpp"],
     toolchains = ["@bazel_tools//tools/cpp:toolchain_type"],

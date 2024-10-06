@@ -1,7 +1,7 @@
 """
 """
 
-load("@bazel_utilities//toolchains:actions_grp.bzl", "CC_ACTIONS_GRP")
+load("//toolchains:actions_grp.bzl", "CC_ACTIONS_GRP")
 load("@rules_cc//cc:cc_toolchain_config_lib.bzl", "with_feature_set")
 
 XFLAGS_ACTIONS = {

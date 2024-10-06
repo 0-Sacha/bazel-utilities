@@ -28,7 +28,7 @@ def get_host_infos_from_rctx(os_name, os_arch):
 
     return host_os, host_arch, "{}_{}".format(host_os, host_arch)
 
-HOST_EXTENTION = {
+HOST_EXTENSION = {
     "windows": ".exe",
     "linux": "",
     "darwin": "",

@@ -32,7 +32,7 @@ TOOLCHAIN_BIN_TYPE = [
 def compiler_tool_name(toolchain_bins_names, tool_type, default = None, fallbacks = []):
     """Tool Name
 
-    This function return the full tool name (including optionals prefix and extention) from its type and fallbacks
+    This function return the full tool name (including optionals prefix and extension) from its type and fallbacks
     Tool types:
         - cpp
         - cc

@@ -5,7 +5,7 @@ Inspired by: https://github.com/erenon/bazel_clang_tidy
 """
 
 load("@bazel_tools//tools/build_defs/cc:action_names.bzl", "ACTION_NAMES")
-load("@bazel_utilities//tools:utils.bzl", "toolchain_flags", "rule_files", "file_extention_match", "C_ALLOWED_FILES_EXT", "CC_HEADER")
+load("//tools:utils.bzl", "toolchain_flags", "rule_files", "file_extension_match", "C_ALLOWED_FILES_EXT", "CC_HEADER")
 
 COMPILER_FILTER_FLAGS = [
     "-fno-canonical-system-headers",
@@ -97,10 +97,10 @@ def _clang_tidy_impl(target, ctx):
 
     report_files = []
     for file in files:
-        if ctx.attr.skip_headers and file_extention_match(file, CC_HEADER):
+        if ctx.attr.skip_headers and file_extension_match(file, CC_HEADER):
             continue
         flags = cxxopts
-        if file_extention_match(file, C_ALLOWED_FILES_EXT):
+        if file_extension_match(file, C_ALLOWED_FILES_EXT):
             flags = copts
         report_files += _execute_clang_tidy(
             ctx = ctx,
@@ -120,8 +120,8 @@ clang_tidy = aspect(
         "system_header_errors": attr.bool(default = False),
         "skip_headers": attr.bool(default = False),
 
-        "_clang_tidy_executable": attr.label(default = Label("@bazel_utilities//tools/clang_tidy:clang_tidy_executable")),
-        "_clang_tidy_config": attr.label(allow_single_file = True, default = Label("@bazel_utilities//tools/clang_tidy:clang_tidy_config")),
+        "_clang_tidy_executable": attr.label(default = Label("//tools/clang_tidy:clang_tidy_executable")),
+        "_clang_tidy_config": attr.label(allow_single_file = True, default = Label("//tools/clang_tidy:clang_tidy_config")),
     },
     fragments = ["cpp"],
     attr_aspects = ['deps'],

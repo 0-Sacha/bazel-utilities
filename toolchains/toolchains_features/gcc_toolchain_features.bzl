@@ -14,7 +14,7 @@ load(
     "with_feature_set",
 )
 
-load("@bazel_utilities//toolchains:actions_grp.bzl", "CC_ACTIONS", "TOOLCHAIN_ACTIONS")
+load("//toolchains:actions_grp.bzl", "CC_ACTIONS", "TOOLCHAIN_ACTIONS")
 load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
 
 def toolchains_tools_features_config_gcc(ctx):
