@@ -1,8 +1,8 @@
 """
 """
 
-load("//toolchains:actions_grp.bzl", "CC_ACTIONS_GRP")
 load("@rules_cc//cc:cc_toolchain_config_lib.bzl", "with_feature_set")
+load("//toolchains:actions_grp.bzl", "CC_ACTIONS_GRP")
 
 XFLAGS_ACTIONS = {
     # "cpp": CC_ACTIONS_GRP.cpp_actions,
@@ -20,14 +20,14 @@ def xflags_unpack(xflags_packed):
 
     This function unpack the flags dict given as input.
     flags: [$#]?(%.*%)?{types}(/{features})?
-        type:
+        types:
             - cpp
             - compile
             - conly
             - cxx
             - as
             - link
-        feature:
+        features:
             - dbg
             - opt
             - fastbuild

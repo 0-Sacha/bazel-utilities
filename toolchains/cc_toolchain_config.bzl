@@ -211,13 +211,12 @@ cc_toolchain_config = rule(
         'defines': attr.string_list(default = []),
         'includedirs': attr.string_list(default = []),
         'linkdirs': attr.string_list(default = []),
-
+        'linklibs': attr.string_list(default = []),
+        # dbg / opt
         'dbg_copts': attr.string_list(default = []),
         'dbg_linkopts': attr.string_list(default = []),
         'opt_copts': attr.string_list(default = []),
         'opt_linkopts': attr.string_list(default = []),
-
-        'toolchain_libs': attr.string_list(default = []),
 
         'artifacts_patterns_packed' : attr.string_list(default = []),
         
