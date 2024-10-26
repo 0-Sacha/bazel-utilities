@@ -46,12 +46,12 @@ CC_HEADER = [
     ".h", ".H", ".hh", ".hpp", ".hxx", ".inc", ".inl"
 ]
 
-def file_extention_match(file, allowed_files):
-    """Returns True if the file type matches one of the permitted file extention
+def file_extension_match(file, allowed_files):
+    """Returns True if the file type matches one of the permitted file extension
     
     Args:
         file: file
-        allowed_files: list of all extentions allowed files
+        allowed_files: list of all extensions allowed files
     Returns:
         True or False
     """
@@ -65,7 +65,7 @@ def rule_files(rule, allowed_files = CC_ALLOWED_FILES):
 
     Args:
         rule: the ctx.rule member
-        allowed_files: list of all extentions allowed files
+        allowed_files: list of all extensions allowed files
     Returns:
         The list of all files
     """
@@ -73,8 +73,8 @@ def rule_files(rule, allowed_files = CC_ALLOWED_FILES):
     files = []
     if hasattr(rule.attr, "srcs"):
         for src in rule.attr.srcs:
-            files += [file for file in src.files.to_list() if file.is_source and file_extention_match(file, allowed_files)]
+            files += [file for file in src.files.to_list() if file.is_source and file_extension_match(file, allowed_files)]
     if hasattr(rule.attr, "hdrs"):
         for hdr in rule.attr.hdrs:
-            files += [file for file in hdr.files.to_list() if file.is_source and file_extention_match(file, allowed_files)]
+            files += [file for file in hdr.files.to_list() if file.is_source and file_extension_match(file, allowed_files)]
     return files

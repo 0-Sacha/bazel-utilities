@@ -16,9 +16,12 @@ def filegroup_translate_to_starlark(filegroups):
     """
     starlark_filegroup = []
     for filegroup in filegroups:
+        repo_name = ""
+        if filegroup.repo_name != "":
+            repo_name = "@@{}".format(filegroup.repo_name)
         starlark_filegroup.append(
-            "@{}//{}:{}".format(
-                filegroup.repo_name,
+            "{}//{}:{}".format(
+                repo_name,
                 filegroup.package,
                 filegroup.name,
             )

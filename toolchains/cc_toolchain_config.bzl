@@ -4,20 +4,20 @@ According to:
 https://bazel.build/docs/cc-toolchain-config-reference
 """
 
-load("@bazel_utilities//toolchains:artifacts.bzl", "artifacts_patterns_unpack")
-load("@bazel_utilities//toolchains:tools_utils.bzl",
+load("//toolchains:artifacts.bzl", "artifacts_patterns_unpack")
+load("//toolchains:tools_utils.bzl",
     "link_actions_to_tool",
     "toolchain_tools_from_paths",
     "toolchain_tools_from_bins",
     "toolchain_path_from_bins",
     "toolchain_ctx_tool_paths",
 )
-# load("@bazel_utilities//toolchains:xflags.bzl", "xflags_unpack")
+# load("//toolchains:xflags.bzl", "xflags_unpack")
 
-load("@bazel_utilities//toolchains/toolchains_features:toolchains_features.bzl", "TOOLCHAINS_FEATURES")
+load("//toolchains/toolchains_features:toolchains_features.bzl", "TOOLCHAINS_FEATURES")
 
 load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
-# load("@bazel_utilities//toolchains:actions_grp.bzl", "TOOLCHAIN_ACTIONS")
+# load("//toolchains:actions_grp.bzl", "TOOLCHAIN_ACTIONS")
 
 def toolchains_tools_actions_config(toolchain_tools):
     """Tools action config
@@ -211,13 +211,12 @@ cc_toolchain_config = rule(
         'defines': attr.string_list(default = []),
         'includedirs': attr.string_list(default = []),
         'linkdirs': attr.string_list(default = []),
-
+        'linklibs': attr.string_list(default = []),
+        # dbg / opt
         'dbg_copts': attr.string_list(default = []),
         'dbg_linkopts': attr.string_list(default = []),
         'opt_copts': attr.string_list(default = []),
         'opt_linkopts': attr.string_list(default = []),
-
-        'toolchain_libs': attr.string_list(default = []),
 
         'artifacts_patterns_packed' : attr.string_list(default = []),
         

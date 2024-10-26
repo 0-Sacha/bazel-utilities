@@ -13,9 +13,9 @@ load(
     "variable_with_value",
     "with_feature_set",
 )
-
-load("@bazel_utilities//toolchains:actions_grp.bzl", "CC_ACTIONS", "TOOLCHAIN_ACTIONS")
 load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
+
+load("//toolchains:actions_grp.bzl", "CC_ACTIONS", "TOOLCHAIN_ACTIONS")
 
 def toolchains_tools_features_config_gcc(ctx):
     """features for tools action config
@@ -36,7 +36,7 @@ def toolchains_tools_features_config_gcc(ctx):
         feature(name = "opt"),
         feature(name = "fastbuild"),
         
-        # feature(name = "coverage"),
+        # feature(name = "coverage"), ## Described Later
     ]
 
     # Toolchain supports
@@ -47,7 +47,7 @@ def toolchains_tools_features_config_gcc(ctx):
     ]
 
     features += [
-        # feature(name = "per_object_debug_info"),
+        # feature(name = "per_object_debug_info"), ## Described Later
         feature(name = "static_link_cpp_runtimes"),
         feature(name = "supports_pic"),
 
@@ -676,7 +676,6 @@ def toolchains_tools_features_config_gcc(ctx):
                 ),
             ],
         ),
-
         feature(
             name = "toolchain-linkdirs",
             enabled = True,
@@ -812,16 +811,16 @@ def toolchains_tools_features_config_gcc(ctx):
         ),
 
         feature(
-            name = "toolchain-toolchain_libs",
+            name = "toolchain-linklibs",
             enabled = True,
             flag_sets = [
                 flag_set(
                     actions = CC_ACTIONS.cc_link,
                     flag_groups = ([
                         flag_group(
-                            flags = [ "-l " + toolchain_lib for toolchain_lib in ctx.attr.toolchain_libs ],
+                            flags = [ "-l " + linklibs for linklibs in ctx.attr.linklibs ],
                         ),
-                    ] if len(ctx.attr.toolchain_libs) > 0 else []),
+                    ] if len(ctx.attr.linklibs) > 0 else []),
                 ),
             ],
         ),
