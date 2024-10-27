@@ -17,11 +17,13 @@ load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
 
 load("//toolchains:actions_grp.bzl", "CC_ACTIONS", "TOOLCHAIN_ACTIONS")
 
-def toolchains_tools_features_config_gcc(ctx):
+def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
     """features for tools action config
     
     Args:
         ctx: ctx
+        compiler_type: supported compiler_type `gcc` / `clang` to disable some clang unsupported flags
+
     Returns:
         The list of all action_configs for this context
     """
@@ -167,6 +169,13 @@ def toolchains_tools_features_config_gcc(ctx):
     ]
 
     ########## Toolchain AR ##########
+
+    classic_ar_flags = [ "rcs", "-o", "%{output_execpath}" ]
+    llvm_ar_flags = [ "rcs", "%{output_execpath}" ]
+    ar_flags = classic_ar_flags
+    if compiler_type == "clang":
+        ar_flags = llvm_ar_flags
+
     features.append(
         feature(
             name = "toolchain-archive-static-lib",
@@ -175,11 +184,7 @@ def toolchains_tools_features_config_gcc(ctx):
                     actions = TOOLCHAIN_ACTIONS.archive_static_lib,
                     flag_groups = [
                         flag_group(
-                            flags = [
-                                "rcs",
-                                "-o",
-                                "%{output_execpath}",
-                            ],
+                            flags = ar_flags,
                             expand_if_available = "output_execpath",
                         ),
                     ],
@@ -537,9 +542,9 @@ def toolchains_tools_features_config_gcc(ctx):
                     actions = CC_ACTIONS.cc_compile,
                     flag_groups = ([
                         flag_group(
-                            flags = ctx.attr.dbg_copts,
+                            flags = ctx.attr.dbg_copts if len(ctx.attr.dbg_copts) > 0 else [ "-g", "-Og" ],
                         ),
-                    ] if len(ctx.attr.dbg_copts) > 0 else []),
+                    ]),
                     with_features = [with_feature_set(features = ["dbg"])],
                 ),
             ],
@@ -552,9 +557,9 @@ def toolchains_tools_features_config_gcc(ctx):
                     actions = CC_ACTIONS.cc_compile,
                     flag_groups = ([
                         flag_group(
-                            flags = ctx.attr.opt_copts,
+                            flags = ctx.attr.opt_copts if len(ctx.attr.opt_copts) > 0 else [ "-O2" ],
                         ),
-                    ] if len(ctx.attr.opt_copts) > 0 else []),
+                    ]),
                     with_features = [with_feature_set(features = ["opt"])],
                 ),
             ],
@@ -963,10 +968,9 @@ def toolchains_tools_features_config_gcc(ctx):
                     actions = CC_ACTIONS.cc_compile + CC_ACTIONS.cc_link,
                     flag_groups = [
                         flag_group(
-                            flags = [
-                                "-no-canonical-prefixes",
-                                "-fno-canonical-system-headers",
-                            ],
+                            flags = [ "-no-canonical-prefixes" ] + (
+                                [ "-fno-canonical-system-headers" ] if compiler_type == "gcc" else []
+                            ),
                         ),
                     ],
                 ),
