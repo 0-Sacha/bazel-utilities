@@ -4,6 +4,8 @@ According to:
 https://bazel.build/docs/cc-toolchain-config-reference
 """
 
+load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
+
 load("//toolchains:artifacts.bzl", "artifacts_patterns_unpack")
 load("//toolchains:tools_utils.bzl",
     "link_actions_to_tool",
@@ -15,9 +17,6 @@ load("//toolchains:tools_utils.bzl",
 # load("//toolchains:xflags.bzl", "xflags_unpack")
 
 load("//toolchains/toolchains_features:toolchains_features.bzl", "TOOLCHAINS_FEATURES")
-
-load("@rules_cc//cc:action_names.bzl", "ACTION_NAMES")
-# load("//toolchains:actions_grp.bzl", "TOOLCHAIN_ACTIONS")
 
 def toolchains_tools_actions_config(toolchain_tools):
     """Tools action config
@@ -173,7 +172,7 @@ def _impl_cc_toolchain_config(ctx):
 
         compiler = ctx.attr.compiler_type,
  
-        features = TOOLCHAINS_FEATURES[ctx.attr.compiler_type](ctx),
+        features = TOOLCHAINS_FEATURES[ctx.attr.compiler_type](ctx, ctx.attr.compiler_type),
         action_configs = toolchains_tools_actions_config(toolchain_tools),
         tool_paths = toolchain_ctx_tool_paths(toolchain_paths),
 
