@@ -440,6 +440,7 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
                 ),
             ]
         ),
+
         feature(
             name = "toolchain-includedirs",
             enabled = True,
@@ -451,6 +452,21 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
                             flags = [ "-I " + includedir for includedir in ctx.attr.includedirs ],
                         ),
                     ] if len(ctx.attr.includedirs) > 0 else []),
+                ),
+            ],
+        ),
+
+        feature(
+            name = "toolchain-builtin-includedirs",
+            enabled = True,
+            flag_sets = [
+                flag_set(
+                    actions = CC_ACTIONS.cc_preprocessor,
+                    flag_groups = ([
+                        flag_group(
+                            flags = [ "-isystem" + includedir for includedir in ctx.attr.toolchain_builtin_includedirs ],
+                        ),
+                    ] if len(ctx.attr.toolchain_builtin_includedirs) > 0 else []),
                 ),
             ],
         ),
