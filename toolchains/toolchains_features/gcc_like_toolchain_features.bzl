@@ -462,11 +462,8 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
             flag_sets = [
                 flag_set(
                     actions = CC_ACTIONS.cc_preprocessor,
-                    flag_groups = ([
-                        flag_group(
-                            flags = [ "-isystem" + includedir for includedir in ctx.attr.toolchain_builtin_includedirs ],
-                        ),
-                    ] if len(ctx.attr.toolchain_builtin_includedirs) > 0 else []),
+                    flag_groups =
+                        [ flag_group(flags = [ "-isystem", includedir ]) for includedir in ctx.attr.toolchain_builtin_includedirs ]
                 ),
             ],
         ),
