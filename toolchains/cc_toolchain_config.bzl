@@ -176,7 +176,7 @@ def _impl_cc_toolchain_config(ctx):
         action_configs = toolchains_tools_actions_config(toolchain_tools),
         tool_paths = toolchain_ctx_tool_paths(toolchain_paths),
 
-        cxx_builtin_include_directories = ctx.attr.cxx_builtin_include_directories,
+        cxx_builtin_include_directories = ctx.attr.toolchain_builtin_includedirs + ctx.attr.toolchain_builtin_includedirs_extra,
 
         artifact_name_patterns = artifacts_patterns_unpack(ctx.attr.artifacts_patterns_packed),
 
@@ -201,7 +201,10 @@ cc_toolchain_config = rule(
         'toolchain_bins': attr.label_keyed_string_dict(mandatory = False, allow_files = True),
         'toolchain_paths': attr.string_dict(mandatory = False),
 
-        'cxx_builtin_include_directories': attr.string_list(default = []),
+        # Thoses path are added to the `-isystem` toolchain
+        'toolchain_builtin_includedirs': attr.string_list(default = []),
+        # In case that path cause issue with the `-isystem` if it doesn't please prefer use of `toolchain_builtin_includedirs` to be able to compile in remote full enclosed env
+        'toolchain_builtin_includedirs_extra': attr.string_list(default = []),
 
         'copts': attr.string_list(default = []),
         'conlyopts': attr.string_list(default = []),
