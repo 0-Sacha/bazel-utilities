@@ -201,9 +201,9 @@ cc_toolchain_config = rule(
         'toolchain_bins': attr.label_keyed_string_dict(mandatory = False, allow_files = True),
         'toolchain_paths': attr.string_dict(mandatory = False),
 
-        # Thoses path are added to the `-isystem` toolchain
+        # Thoses path are added to the `-I` toolchain
         'toolchain_builtin_includedirs': attr.string_list(default = []),
-        # In case that path cause issue with the `-isystem` if it doesn't please prefer use of `toolchain_builtin_includedirs` to be able to compile in remote full enclosed env
+        # In case that path cause issue with the `-I` if it doesn't please prefer use of `toolchain_builtin_includedirs` to be able to compile in remote full enclosed env
         'toolchain_builtin_includedirs_extra': attr.string_list(default = []),
 
         'copts': attr.string_list(default = []),

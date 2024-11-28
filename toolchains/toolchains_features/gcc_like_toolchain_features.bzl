@@ -399,6 +399,23 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
     ########## Includes Flags ##########
     features += [
         feature(
+            name = "bazel-includes",
+            enabled = True,
+            flag_sets = [
+                flag_set(
+                    actions = CC_ACTIONS.cc_preprocessor,
+                    flag_groups = [
+                        flag_group(
+                            flags = ["-include", "%{includes}"],
+                            iterate_over = "includes",
+                            expand_if_available = "includes",
+                        ),
+                    ],
+                ),
+            ]
+        ),
+
+        feature(
             name = "bazel-includedirs",
             enabled = True,
             flag_sets = [
@@ -424,22 +441,6 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
                 ),
             ],
         ),
-        feature(
-            name = "bazel-includes",
-            enabled = True,
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_preprocessor,
-                    flag_groups = [
-                        flag_group(
-                            flags = ["-include", "%{includes}"],
-                            iterate_over = "includes",
-                            expand_if_available = "includes",
-                        ),
-                    ],
-                ),
-            ]
-        ),
 
         feature(
             name = "toolchain-includedirs",
@@ -463,7 +464,7 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
                 flag_set(
                     actions = CC_ACTIONS.cc_preprocessor,
                     flag_groups =
-                        [ flag_group(flags = [ "-isystem", includedir ]) for includedir in ctx.attr.toolchain_builtin_includedirs ]
+                        [ flag_group(flags = [ "-I", includedir ]) for includedir in ctx.attr.toolchain_builtin_includedirs ]
                 ),
             ],
         ),

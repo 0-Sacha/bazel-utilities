@@ -153,7 +153,7 @@ def toolchain_tools_from_bins(toolchain_bins, toolchain_bins_paths):
             print("Toolchain binaries: not supported tool_type: {}".format(tool_type)) # buildifier: disable=print
         
         if tool_type in toolchain_tools:
-            print("Toolchain binaries: tool_type: {} already defined, Skipping".format(tool_type)) # buildifier: disable=print
+            print("Toolchain binaries: tool_type: {} already defined, Ignoreping".format(tool_type)) # buildifier: disable=print
             continue
         
         toolchain_tools[tool_type] = struct(
@@ -181,7 +181,7 @@ def toolchain_tools_from_paths(toolchain_paths):
             print("Toolchain binaries: not supported tool_type: {}".format(tool_type)) # buildifier: disable=print
         
         if tool_type in toolchain_tools:
-            print("Toolchain binaries: tool_type: {} already defined, Skipping".format(tool_type)) # buildifier: disable=print
+            print("Toolchain binaries: tool_type: {} already defined, Ignoreping".format(tool_type)) # buildifier: disable=print
             continue
         
         toolchain_tools[tool_type] = tool(path = tool_path)
