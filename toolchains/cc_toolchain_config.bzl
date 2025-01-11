@@ -227,7 +227,18 @@ cc_toolchain_config = rule(
         'enable_features': attr.string_list(default = []),
         'extras_features': attr.string_list(default = []),
 
-        # Not really usefull
+        # Config:
+        'disable_dynamiclink': attr.bool(default = False),
+        'disable_lto': attr.bool(default = False),
+        'disable_fdo': attr.bool(default = False),
+        'disable_cov': attr.bool(default = False),
+        'disable_cliff': attr.bool(default = False),
+        'disable_runtimelib': attr.bool(default = False),
+        'disable_interfacelib': attr.bool(default = False),
+        'disable_sanitizers': attr.bool(default = False),
+        'disable_pic': attr.bool(default = False),
+
+        # Not really usefull, just forwarders
         'abi_version': attr.string(default = "local"),
         'abi_libc_version': attr.string(default = "local")
     },

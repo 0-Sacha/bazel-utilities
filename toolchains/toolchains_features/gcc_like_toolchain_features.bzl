@@ -32,38 +32,42 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
     ########## Well Known Features ##########
     features.append(feature(name = "no_legacy_features", enabled = True))
 
-    # Bazel Modes
+    # Bazel Compilations Modes
     features += [
         feature(name = "dbg"),
         feature(name = "opt"),
         feature(name = "fastbuild"),
-        
-        # feature(name = "coverage"), ## Described Later
     ]
+
+    # feature(name = "coverage"), ## Described Later
 
     # Toolchain supports
-    features += [
-        feature(name = "supports_start_end_lib"),
-        feature(name = "supports_interface_shared_libraries"),
-        feature(name = "supports_dynamic_linker"),
-    ]
+    features.append(
+        feature(name = "supports_start_end_lib")
+    )
 
+    if ctx.attr.disable_dynamiclink == False:
+        features += [
+            feature(name = "supports_interface_shared_libraries"),
+            feature(name = "supports_dynamic_linker"),
+        ]
+        
     features += [
-        # feature(name = "per_object_debug_info"), ## Described Later
         feature(name = "static_link_cpp_runtimes"),
         feature(name = "supports_pic"),
-
         feature(name = "archive_param_file"),
         feature(name = "has_configured_linker_path"),
     ]
 
-    # MISSING: Modules related features
-    features += [
-        feature(name = "compile_all_modules"),
-        feature(name = "exclude_private_headers_in_module_maps"),
-        feature(name = "only_doth_headers_in_module_maps"),
-        feature(name = "module_maps", enabled = True),
-    ]
+    # feature(name = "per_object_debug_info"), ## Described Later
+
+    # MISSING/TODO: Modules related features
+    # features += [
+    #     feature(name = "compile_all_modules"),
+    #     feature(name = "exclude_private_headers_in_module_maps"),
+    #     feature(name = "only_doth_headers_in_module_maps"),
+    #     feature(name = "module_maps", enabled = True),
+    # ]
 
     ########## Assembler actions ##########
     features += [
@@ -138,16 +142,20 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
     ]
 
     ########## Toolchain Link ##########
+    if ctx.attr.disable_dynamiclink == False:
+        features.append(
+            feature(
+                name = "toolchain-link-dynamic-lib",
+                flag_sets = [
+                    flag_set(
+                        actions = TOOLCHAIN_ACTIONS.link_dynamic_lib,
+                        flag_groups = [ flag_group(flags = [ "-shared" ]) ],
+                    ),
+                ],
+            )
+        )
+
     features += [
-        feature(
-            name = "toolchain-link-dynamic-lib",
-            flag_sets = [
-                flag_set(
-                    actions = TOOLCHAIN_ACTIONS.link_dynamic_lib,
-                    flag_groups = [ flag_group(flags = [ "-shared" ]) ],
-                ),
-            ],
-        ),
         feature(
             name = "toolchain-link-nodeps",
             flag_sets = [
@@ -220,26 +228,27 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
     )
 
     ########## Toolchain LTO ##########
-    features += [
-        feature(
-            name = "toolchain-lto-backend",
-            flag_sets = [
-                flag_set(
-                    actions = TOOLCHAIN_ACTIONS.lto_backend,
-                    flag_groups = [],
-                ),
-            ],
-        ),
-        feature(
-            name = "toolchain-lto-indexing",
-            flag_sets = [
-                flag_set(
-                    actions = TOOLCHAIN_ACTIONS.lto_indexing,
-                    flag_groups = [],
-                ),
-            ],
-        )
-    ]
+    if ctx.attr.disable_lto == False:
+        features += [
+            feature(
+                name = "toolchain-lto-backend",
+                flag_sets = [
+                    flag_set(
+                        actions = TOOLCHAIN_ACTIONS.lto_backend,
+                        flag_groups = [],
+                    ),
+                ],
+            ),
+            feature(
+                name = "toolchain-lto-indexing",
+                flag_sets = [
+                    flag_set(
+                        actions = TOOLCHAIN_ACTIONS.lto_indexing,
+                        flag_groups = [],
+                    ),
+                ],
+            )
+        ]
 
     ########## Toolchain Strip ##########
     features.append(
@@ -262,17 +271,19 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
     )
 
     ########## Toolchain Cliff ##########
-    features.append(
-        feature(
-            name = "toolchain-clif-match",
-            flag_sets = [
-                flag_set(
-                    actions = TOOLCHAIN_ACTIONS.cliff_match,
-                    flag_groups = [],
-                ),
-            ],
+    # TODO: Test cliff (Never tested)
+    if ctx.attr.disable_cliff == False:
+        features.append(
+            feature(
+                name = "toolchain-clif-match",
+                flag_sets = [
+                    flag_set(
+                        actions = TOOLCHAIN_ACTIONS.cliff_match,
+                        flag_groups = [],
+                    ),
+                ],
+            )
         )
-    )
 
     ########## Files ##########
     features += [
@@ -299,11 +310,11 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
                     actions = CC_ACTIONS.cc_compile + CC_ACTIONS.cc_assemble,
                     flag_groups = [
                         flag_group(
-                            flags = ["-S"],
+                            flags = ["-S", "-o", "%{output_assembly_file}"],
                             expand_if_available = "output_assembly_file",
                         ),
                         flag_group(
-                            flags = ["-E"],
+                            flags = ["-E", "-o", "%{output_preprocess_file}"],
                             expand_if_available = "output_preprocess_file",
                         ),
                         flag_group(
@@ -711,6 +722,99 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
     ]
 
     ########## Link Libs ##########
+    lib_to_link_flag_groups = [
+        # object_file_group
+        flag_group(
+            flags = ["-Wl,--start-lib"],
+            expand_if_equal = variable_with_value(
+                name = "libraries_to_link.type",
+                value = "object_file_group",
+            ),
+        ),
+        flag_group(
+            flags = ["%{libraries_to_link.object_files}"],
+            iterate_over = "libraries_to_link.object_files",
+            expand_if_equal = variable_with_value(
+                name = "libraries_to_link.type",
+                value = "object_file_group",
+            ),
+        ),
+        flag_group(
+            flags = ["-Wl,--end-lib"],
+            expand_if_equal = variable_with_value(
+                name = "libraries_to_link.type",
+                value = "object_file_group",
+            ),
+        ),
+
+        # static_library
+        flag_group(
+            flags = ["-Wl,-whole-archive"],
+            expand_if_true = "libraries_to_link.is_whole_archive",
+            expand_if_equal = variable_with_value(
+                name = "libraries_to_link.type",
+                value = "static_library",
+            ),
+        ),
+        flag_group(
+            flags = ["%{libraries_to_link.name}"],
+            expand_if_equal = variable_with_value(
+                name = "libraries_to_link.type",
+                value = "static_library",
+            ),
+        ),
+        flag_group(
+            flags = ["-Wl,-no-whole-archive"],
+            expand_if_true = "libraries_to_link.is_whole_archive",
+            expand_if_equal = variable_with_value(
+                name = "libraries_to_link.type",
+                value = "static_library",
+            ),
+        ),
+
+        # object_file
+        flag_group(
+            flags = ["%{libraries_to_link.name}"],
+            expand_if_equal = variable_with_value(
+                name = "libraries_to_link.type",
+                value = "object_file",
+            ),
+        ),
+    ]
+
+    if ctx.attr.disable_dynamiclink == False:
+        lib_to_link_flag_groups += [
+             # interface_library
+            flag_group(
+                flags = ["%{libraries_to_link.name}"],
+                expand_if_equal = variable_with_value(
+                    name = "libraries_to_link.type",
+                    value = "interface_library",
+                ),
+            ),
+        ]
+
+    if ctx.attr.disable_dynamiclink == False:
+        lib_to_link_flag_groups += [
+            # dynamic_library
+            flag_group(
+                flags = ["-l%{libraries_to_link.name}"],
+                expand_if_equal = variable_with_value(
+                    name = "libraries_to_link.type",
+                    value = "dynamic_library",
+                ),
+            ),
+
+            # versioned_dynamic_library
+            flag_group(
+                flags = ["-l:%{libraries_to_link.name}"],
+                expand_if_equal = variable_with_value(
+                    name = "libraries_to_link.type",
+                    value = "versioned_dynamic_library",
+                ),
+            ),
+        ]
+    
     features += [
         feature(
             name = "libraries_to_link",
@@ -722,92 +826,7 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
                         flag_group(
                             iterate_over = "libraries_to_link",
                             expand_if_available = "libraries_to_link",
-                            flag_groups = [
-                                # object_file_group
-                                flag_group(
-                                    flags = ["-Wl,--start-lib"],
-                                    expand_if_equal = variable_with_value(
-                                        name = "libraries_to_link.type",
-                                        value = "object_file_group",
-                                    ),
-                                ),
-                                flag_group(
-                                    flags = ["%{libraries_to_link.object_files}"],
-                                    iterate_over = "libraries_to_link.object_files",
-                                    expand_if_equal = variable_with_value(
-                                        name = "libraries_to_link.type",
-                                        value = "object_file_group",
-                                    ),
-                                ),
-                                flag_group(
-                                    flags = ["-Wl,--end-lib"],
-                                    expand_if_equal = variable_with_value(
-                                        name = "libraries_to_link.type",
-                                        value = "object_file_group",
-                                    ),
-                                ),
-
-                                # static_library
-                                flag_group(
-                                    flags = ["-Wl,-whole-archive"],
-                                    expand_if_true = "libraries_to_link.is_whole_archive",
-                                    expand_if_equal = variable_with_value(
-                                        name = "libraries_to_link.type",
-                                        value = "static_library",
-                                    ),
-                                ),
-                                flag_group(
-                                    flags = ["%{libraries_to_link.name}"],
-                                    expand_if_equal = variable_with_value(
-                                        name = "libraries_to_link.type",
-                                        value = "static_library",
-                                    ),
-                                ),
-                                flag_group(
-                                    flags = ["-Wl,-no-whole-archive"],
-                                    expand_if_true = "libraries_to_link.is_whole_archive",
-                                    expand_if_equal = variable_with_value(
-                                        name = "libraries_to_link.type",
-                                        value = "static_library",
-                                    ),
-                                ),
-
-                                # object_file
-                                flag_group(
-                                    flags = ["%{libraries_to_link.name}"],
-                                    expand_if_equal = variable_with_value(
-                                        name = "libraries_to_link.type",
-                                        value = "object_file",
-                                    ),
-                                ),
-
-                                # interface_library
-                                flag_group(
-                                    flags = ["%{libraries_to_link.name}"],
-                                    expand_if_equal = variable_with_value(
-                                        name = "libraries_to_link.type",
-                                        value = "interface_library",
-                                    ),
-                                ),
-                                
-                                # dynamic_library
-                                flag_group(
-                                    flags = ["-l%{libraries_to_link.name}"],
-                                    expand_if_equal = variable_with_value(
-                                        name = "libraries_to_link.type",
-                                        value = "dynamic_library",
-                                    ),
-                                ),
-
-                                # versioned_dynamic_library
-                                flag_group(
-                                    flags = ["-l:%{libraries_to_link.name}"],
-                                    expand_if_equal = variable_with_value(
-                                        name = "libraries_to_link.type",
-                                        value = "versioned_dynamic_library",
-                                    ),
-                                ),
-                            ],
+                            flag_groups = lib_to_link_flag_groups,
                         ),
                     ],
                 ),
@@ -844,102 +863,106 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
         ),
     ]
 
+
     ########## Runtime Lib ##########
-    ## features.append(
-    ##     feature(
-    ##         name = "runtime_library_search_directories",
-    ##         flag_sets = [
-    ##             flag_set(
-    ##                 actions = CC_ACTIONS.cc_link + CC_ACTIONS.,
-    ##                 flag_groups = [
-    ##                     flag_group(
-    ##                         iterate_over = "runtime_library_search_directories",
-    ##                         expand_if_available = "runtime_library_search_directories",
-    ##                         flag_groups = [
-    ##                             flag_group(
-    ##                                 flags = [
-    ##                                     "-Xlinker",
-    ##                                     "-rpath",
-    ##                                     "-Xlinker",
-    ##                                     "@loader_path/%{runtime_library_search_directories}",
-    ##                                 ],
-    ##                                 expand_if_true = "is_cc_test",
-    ##                             ),
-    ##                         ],
-    ##                     ),
-    ##                 ],
-    ##                 with_features = [
-    ##                     with_feature_set(features = ["static_link_cpp_runtimes"]),
-    ##                 ],
-    ##             ),
-    ##             flag_set(
-    ##                 actions = CC_ACTIONS.cc_link,
-    ##                 flag_groups = [
-    ##                     flag_group(
-    ##                         iterate_over = "runtime_library_search_directories",
-    ##                         expand_if_available = "runtime_library_search_directories",
-    ##                         flag_groups = [
-    ##                             flag_group(
-    ##                                 flags = [
-    ##                                     "-Xlinker",
-    ##                                     "-rpath",
-    ##                                     "-Xlinker",
-    ##                                     "$ORIGIN/%{runtime_library_search_directories}",
-    ##                                 ],
-    ##                             ),
-    ##                         ],
-    ##                     ),
-    ##                 ],
-    ##                 with_features = [
-    ##                     with_feature_set(not_features = ["static_link_cpp_runtimes"]),
-    ##                 ],
-    ##             ),
-    ##         ],
+    ## TODO: Runtime Lib
+    ## if ctx.attr.disable_runtimelib == False:
+    ##     features.append(
+    ##         feature(
+    ##             name = "runtime_library_search_directories",
+    ##             flag_sets = [
+    ##                 flag_set(
+    ##                     actions = CC_ACTIONS.cc_link + CC_ACTIONS.,
+    ##                     flag_groups = [
+    ##                         flag_group(
+    ##                             iterate_over = "runtime_library_search_directories",
+    ##                             expand_if_available = "runtime_library_search_directories",
+    ##                             flag_groups = [
+    ##                                 flag_group(
+    ##                                     flags = [
+    ##                                         "-Xlinker",
+    ##                                         "-rpath",
+    ##                                         "-Xlinker",
+    ##                                         "@loader_path/%{runtime_library_search_directories}",
+    ##                                     ],
+    ##                                     expand_if_true = "is_cc_test",
+    ##                                 ),
+    ##                             ],
+    ##                         ),
+    ##                     ],
+    ##                     with_features = [
+    ##                         with_feature_set(features = ["static_link_cpp_runtimes"]),
+    ##                     ],
+    ##                 ),
+    ##                 flag_set(
+    ##                     actions = CC_ACTIONS.cc_link,
+    ##                     flag_groups = [
+    ##                         flag_group(
+    ##                             iterate_over = "runtime_library_search_directories",
+    ##                             expand_if_available = "runtime_library_search_directories",
+    ##                             flag_groups = [
+    ##                                 flag_group(
+    ##                                     flags = [
+    ##                                         "-Xlinker",
+    ##                                         "-rpath",
+    ##                                         "-Xlinker",
+    ##                                         "$ORIGIN/%{runtime_library_search_directories}",
+    ##                                     ],
+    ##                                 ),
+    ##                             ],
+    ##                         ),
+    ##                     ],
+    ##                     with_features = [
+    ##                         with_feature_set(not_features = ["static_link_cpp_runtimes"]),
+    ##                     ],
+    ##                 ),
+    ##             ],
+    ##         )
     ##     )
-    ## )
 
     ########## Interface Library ##########
-    features += [
-        feature(
-            name = "build_interface_libraries",
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_link_lib,
-                    flag_groups = [
-                        flag_group(
-                            flags = [
-                                "%{generate_interface_library}",
-                                "%{interface_library_builder_path}",
-                                "%{interface_library_input_path}",
-                                "%{interface_library_output_path}",
-                            ],
-                            expand_if_available = "generate_interface_library",
-                        ),
-                    ],
-                    with_features = [
-                        with_feature_set(features = ["supports_interface_shared_libraries"]),
-                    ],
-                ),
-            ],
-        ),
-        feature(
-            name = "dynamic_library_linker_tool",
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_link_lib,
-                    flag_groups = [
-                        flag_group(
-                            flags = [" + cppLinkDynamicLibraryToolPath + "],
-                            expand_if_available = "generate_interface_library",
-                        ),
-                    ],
-                    with_features = [
-                        with_feature_set(features = ["supports_interface_shared_libraries"]),
-                    ],
-                ),
-            ],
-        )
-    ]
+    if ctx.attr.disable_interfacelib == False:
+        features += [
+            feature(
+                name = "build_interface_libraries",
+                flag_sets = [
+                    flag_set(
+                        actions = CC_ACTIONS.cc_link_lib,
+                        flag_groups = [
+                            flag_group(
+                                flags = [
+                                    "%{generate_interface_library}",
+                                    "%{interface_library_builder_path}",
+                                    "%{interface_library_input_path}",
+                                    "%{interface_library_output_path}",
+                                ],
+                                expand_if_available = "generate_interface_library",
+                            ),
+                        ],
+                        with_features = [
+                            with_feature_set(features = ["supports_interface_shared_libraries"]),
+                        ],
+                    ),
+                ],
+            ),
+            feature(
+                name = "dynamic_library_linker_tool",
+                flag_sets = [
+                    flag_set(
+                        actions = CC_ACTIONS.cc_link_lib,
+                        flag_groups = [
+                            flag_group(
+                                flags = [" + cppLinkDynamicLibraryToolPath + "],
+                                expand_if_available = "generate_interface_library",
+                            ),
+                        ],
+                        with_features = [
+                            with_feature_set(features = ["supports_interface_shared_libraries"]),
+                        ],
+                    ),
+                ],
+            )
+        ]
 
     ########## Miscs ##########
     features += [
@@ -1029,299 +1052,304 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
     )
 
     ########## Pic ##########
-    features += [
-        feature(
-            name = "pic",
-            enabled = True,
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_compile + CC_ACTIONS.cc_assemble,
-                    flag_groups = [
-                        flag_group(
-                            flags = ["-fPIC"],
-                            expand_if_available = "pic"
-                        ),
-                    ],
-                ),
-            ],
-        ),
-        feature(
-            name = "force_pic",
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_link_exe,
-                    flag_groups = [
-                        flag_group(
-                            flags = ["-Wl,-pie"],
-                            expand_if_available = "force_pic",
-                        ),
-                    ],
-                ),
-            ],
-        )
-    ]
+    if ctx.attr.disable_pic == False:
+        features += [
+            feature(
+                name = "pic",
+                enabled = True,
+                flag_sets = [
+                    flag_set(
+                        actions = CC_ACTIONS.cc_compile + CC_ACTIONS.cc_assemble,
+                        flag_groups = [
+                            flag_group(
+                                flags = ["-fPIC"],
+                                expand_if_available = "pic"
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            feature(
+                name = "force_pic",
+                flag_sets = [
+                    flag_set(
+                        actions = CC_ACTIONS.cc_link_exe,
+                        flag_groups = [
+                            flag_group(
+                                flags = ["-Wl,-pie"],
+                                expand_if_available = "force_pic",
+                            ),
+                        ],
+                    ),
+                ],
+            )
+        ]
 
 
     ########## Coverage ##########
-    features += [
-        feature(
-            name = "coverage",
-            provides = ["profile"],
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_compile,
-                    flag_groups = [],
-                ),
-                flag_set(
-                    actions = CC_ACTIONS.cc_link,
-                    flag_groups = [],
-                ),
-            ],
-        ),
+    if ctx.attr.disable_cov == False:
+        features += [
+            feature(
+                name = "coverage",
+                provides = ["profile"],
+                flag_sets = [
+                    flag_set(
+                        actions = CC_ACTIONS.cc_compile,
+                        flag_groups = [],
+                    ),
+                    flag_set(
+                        actions = CC_ACTIONS.cc_link,
+                        flag_groups = [],
+                    ),
+                ],
+            ),
 
-        feature(
-            name = "gcc_coverage_map_format",
-            enabled = True,
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_compile,
-                    flag_groups = [
-                        flag_group(
-                            flags = ["-fprofile-arcs", "-ftest-coverage", "-g"],
-                            expand_if_available = "gcov_gcno_file",
-                        ),
-                    ],
-                ),
-                flag_set(
-                    actions = CC_ACTIONS.cc_link,
-                    flag_groups = [
-                        flag_group(
-                            flags = ["--coverage"],
-                            expand_if_available = "gcov_gcno_file",
-                        )
-                    ],
-                ),
-            ],
-            requires = [feature_set(features = ["coverage"])],
-        ),
-        feature(
-            name = "llvm_coverage_map_format",
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_compile,
-                    flag_groups = [
-                        flag_group(
-                            flags = ["-fprofile-instr-generate", "-fcoverage-mapping", "-g"],
-                        ),
-                    ],
-                ),
-                flag_set(
-                    actions = CC_ACTIONS.cc_link,
-                    flag_groups = [flag_group(flags = ["-fprofile-instr-generate"])],
-                ),
-            ],
-            requires = [feature_set(features = ["coverage"])],
-        ),
+            feature(
+                name = "gcc_coverage_map_format",
+                enabled = True,
+                flag_sets = [
+                    flag_set(
+                        actions = CC_ACTIONS.cc_compile,
+                        flag_groups = [
+                            flag_group(
+                                flags = ["-fprofile-arcs", "-ftest-coverage", "-g"],
+                                expand_if_available = "gcov_gcno_file",
+                            ),
+                        ],
+                    ),
+                    flag_set(
+                        actions = CC_ACTIONS.cc_link,
+                        flag_groups = [
+                            flag_group(
+                                flags = ["--coverage"],
+                                expand_if_available = "gcov_gcno_file",
+                            )
+                        ],
+                    ),
+                ],
+                requires = [feature_set(features = ["coverage"])],
+            ),
+            feature(
+                name = "llvm_coverage_map_format",
+                flag_sets = [
+                    flag_set(
+                        actions = CC_ACTIONS.cc_compile,
+                        flag_groups = [
+                            flag_group(
+                                flags = ["-fprofile-instr-generate", "-fcoverage-mapping", "-g"],
+                            ),
+                        ],
+                    ),
+                    flag_set(
+                        actions = CC_ACTIONS.cc_link,
+                        flag_groups = [flag_group(flags = ["-fprofile-instr-generate"])],
+                    ),
+                ],
+                requires = [feature_set(features = ["coverage"])],
+            ),
 
-        feature(
-            name = "coverage_prefix_map",
-            enabled = True,
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_compile,
-                    flag_groups = [
-                        flag_group(
-                            flags = ["-fcoverage-prefix-map=__BAZEL_EXECUTION_ROOT__=."],
-                        ),
-                    ],
-                ),
-            ],
-            requires = [feature_set(features = ["coverage"])],
-        ),
-    ]
+            feature(
+                name = "coverage_prefix_map",
+                enabled = True,
+                flag_sets = [
+                    flag_set(
+                        actions = CC_ACTIONS.cc_compile,
+                        flag_groups = [
+                            flag_group(
+                                flags = ["-fcoverage-prefix-map=__BAZEL_EXECUTION_ROOT__=."],
+                            ),
+                        ],
+                    ),
+                ],
+                requires = [feature_set(features = ["coverage"])],
+            ),
+        ]
 
     ########## LTO / ThinLTO ##########
-    features.append(
-        feature(
-            name = "thin_lto",
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_compile_only + CC_ACTIONS.cc_link,
-                    flag_groups = [
-                        flag_group(flags = ["-flto=thin"]),
-                        flag_group(
-                            expand_if_available = "lto_indexing_bitcode_file",
-                            flags = [
-                                "-Xclang",
-                                "-fthin-link-bitcode=%{lto_indexing_bitcode_file}",
-                            ],
-                        ),
-                    ],
-                ),
-                flag_set(
-                    actions = [ACTION_NAMES.linkstamp_compile],
-                    flag_groups = [flag_group(flags = ["-DBUILD_LTO_TYPE=thin"])],
-                ),
-                flag_set(
-                    actions = CC_ACTIONS.cc_link_lto_indexing,
-                    flag_groups = [
-                        flag_group(
-                            flags = [
-                                "-flto=thin",
-                                "-Wl,-plugin-opt,thinlto-index-only%{thinlto_optional_params_file}",
-                                "-Wl,-plugin-opt,thinlto-emit-imports-files",
-                                "-Wl,-plugin-opt,thinlto-prefix-replace=%{thinlto_prefix_replace}",
-                            ]
-                        ),
-                        flag_group(
-                            expand_if_available = "thinlto_object_suffix_replace",
-                            flags = [
-                                "-Wl,-plugin-opt,thinlto-object-suffix-replace=%{thinlto_object_suffix_replace}",
-                            ],
-                        ),
-                        flag_group(
-                            expand_if_available = "thinlto_merged_object_file",
-                            flags = [
-                                "-Wl,-plugin-opt,obj-path=%{thinlto_merged_object_file}",
-                            ],
-                        ),
-                    ],
-                ),
-                flag_set(
-                    actions = [ACTION_NAMES.lto_backend],
-                    flag_groups = [
-                        flag_group(flags = [
-                            "-c",
-                            "-fthinlto-index=%{thinlto_index}",
-                            "-o",
-                            "%{thinlto_output_object_file}",
-                            "-x",
-                            "ir",
-                            "%{thinlto_input_bitcode_file}",
-                        ]),
-                    ],
-                ),
-            ],
+    if ctx.attr.disable_lto == False:
+        features.append(
+            feature(
+                name = "thin_lto",
+                flag_sets = [
+                    flag_set(
+                        actions = CC_ACTIONS.cc_compile_only + CC_ACTIONS.cc_link,
+                        flag_groups = [
+                            flag_group(flags = ["-flto=thin"]),
+                            flag_group(
+                                expand_if_available = "lto_indexing_bitcode_file",
+                                flags = [
+                                    "-Xclang",
+                                    "-fthin-link-bitcode=%{lto_indexing_bitcode_file}",
+                                ],
+                            ),
+                        ],
+                    ),
+                    flag_set(
+                        actions = [ACTION_NAMES.linkstamp_compile],
+                        flag_groups = [flag_group(flags = ["-DBUILD_LTO_TYPE=thin"])],
+                    ),
+                    flag_set(
+                        actions = CC_ACTIONS.cc_link_lto_indexing,
+                        flag_groups = [
+                            flag_group(
+                                flags = [
+                                    "-flto=thin",
+                                    "-Wl,-plugin-opt,thinlto-index-only%{thinlto_optional_params_file}",
+                                    "-Wl,-plugin-opt,thinlto-emit-imports-files",
+                                    "-Wl,-plugin-opt,thinlto-prefix-replace=%{thinlto_prefix_replace}",
+                                ]
+                            ),
+                            flag_group(
+                                expand_if_available = "thinlto_object_suffix_replace",
+                                flags = [
+                                    "-Wl,-plugin-opt,thinlto-object-suffix-replace=%{thinlto_object_suffix_replace}",
+                                ],
+                            ),
+                            flag_group(
+                                expand_if_available = "thinlto_merged_object_file",
+                                flags = [
+                                    "-Wl,-plugin-opt,obj-path=%{thinlto_merged_object_file}",
+                                ],
+                            ),
+                        ],
+                    ),
+                    flag_set(
+                        actions = [ACTION_NAMES.lto_backend],
+                        flag_groups = [
+                            flag_group(flags = [
+                                "-c",
+                                "-fthinlto-index=%{thinlto_index}",
+                                "-o",
+                                "%{thinlto_output_object_file}",
+                                "-x",
+                                "ir",
+                                "%{thinlto_input_bitcode_file}",
+                            ]),
+                        ],
+                    ),
+                ],
+            )
         )
-    )
 
     ########## FDO ##########
-    features += [
-        feature(
-            name = "fdo_instrument",
-            provides = ["profile"],
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_compile_only + CC_ACTIONS.cc_link,
-                    flag_groups = [
-                        flag_group(
-                            flags = [
-                                "-fprofile-generate=%{fdo_instrument_path}",
-                                "-fno-data-sections",
-                            ],
-                            expand_if_available = "fdo_instrument_path",
-                        ),
-                    ],
-                ),
-            ],
-        ),
-        feature(
-            name = "fdo_optimize",
-            provides = ["profile"],
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_compile_only,
-                    flag_groups = [
-                        flag_group(
-                            flags = [
-                                "-fprofile-use=%{fdo_profile_path}",
-                                "-fprofile-correction",
-                            ],
-                            expand_if_available = "fdo_profile_path",
-                        ),
-                    ],
-                ),
-            ],
-        ),
-        feature(
-            name = "cs_fdo_optimize",
-            provides = ["csprofile"],
-            flag_sets = [
-                flag_set(
-                    actions = [ACTION_NAMES.lto_backend],
-                    flag_groups = [
-                        flag_group(
-                            flags = [
-                                "-fprofile-use=%{fdo_profile_path}",
-                                "-Wno-profile-instr-unprofiled",
-                                "-Wno-profile-instr-out-of-date",
-                                "-fprofile-correction",
-                            ],
-                            expand_if_available = "fdo_profile_path",
-                        ),
-                    ],
-                ),
-            ],
-        ),
-        feature(
-            name = "autofdo",
-            provides = ["profile"],
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_compile_only,
-                    flag_groups = [
-                        flag_group(
-                            flags = [
-                                "-fauto-profile=%{fdo_profile_path}",
-                                "-fprofile-correction",
-                            ],
-                            expand_if_available = "fdo_profile_path",
-                        ),
-                    ],
-                ),
-            ],
-        ),
-        feature(
-            name = "fdo_prefetch_hints",
-            flag_sets = [
-                flag_set(
-                    actions = [
-                        ACTION_NAMES.c_compile,
-                        ACTION_NAMES.cpp_compile,
-                        ACTION_NAMES.lto_backend,
-                    ],
-                    flag_groups = [
-                        flag_group(
-                            flags = [
-                                "-mllvm",
-                                "-prefetch-hints-file=%{fdo_prefetch_hints_path}",
-                            ],
-                            expand_if_available = "fdo_prefetch_hints_path",
-                        ),
-                    ],
-                ),
-            ],
-        ),
-        feature(
-            name = "cs_fdo_instrument",
-            provides = ["csprofile"],
-            flag_sets = [
-                flag_set(
-                    actions = [
-                        ACTION_NAMES.c_compile,
-                        ACTION_NAMES.cpp_compile,
-                        ACTION_NAMES.lto_backend,
-                    ] + CC_ACTIONS.cc_link,
-                    flag_groups = [
-                        flag_group(
-                            flags = ["-fcs-profile-generate=%{cs_fdo_instrument_path}"],
-                            expand_if_available = "cs_fdo_instrument_path",
-                        ),
-                    ],
-                ),
-            ],
-        )
-    ]
+    if ctx.attr.disable_fdo == False:
+        features += [
+            feature(
+                name = "fdo_instrument",
+                provides = ["profile"],
+                flag_sets = [
+                    flag_set(
+                        actions = CC_ACTIONS.cc_compile_only + CC_ACTIONS.cc_link,
+                        flag_groups = [
+                            flag_group(
+                                flags = [
+                                    "-fprofile-generate=%{fdo_instrument_path}",
+                                    "-fno-data-sections",
+                                ],
+                                expand_if_available = "fdo_instrument_path",
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            feature(
+                name = "fdo_optimize",
+                provides = ["profile"],
+                flag_sets = [
+                    flag_set(
+                        actions = CC_ACTIONS.cc_compile_only,
+                        flag_groups = [
+                            flag_group(
+                                flags = [
+                                    "-fprofile-use=%{fdo_profile_path}",
+                                    "-fprofile-correction",
+                                ],
+                                expand_if_available = "fdo_profile_path",
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            feature(
+                name = "cs_fdo_optimize",
+                provides = ["csprofile"],
+                flag_sets = [
+                    flag_set(
+                        actions = [ACTION_NAMES.lto_backend],
+                        flag_groups = [
+                            flag_group(
+                                flags = [
+                                    "-fprofile-use=%{fdo_profile_path}",
+                                    "-Wno-profile-instr-unprofiled",
+                                    "-Wno-profile-instr-out-of-date",
+                                    "-fprofile-correction",
+                                ],
+                                expand_if_available = "fdo_profile_path",
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            feature(
+                name = "autofdo",
+                provides = ["profile"],
+                flag_sets = [
+                    flag_set(
+                        actions = CC_ACTIONS.cc_compile_only,
+                        flag_groups = [
+                            flag_group(
+                                flags = [
+                                    "-fauto-profile=%{fdo_profile_path}",
+                                    "-fprofile-correction",
+                                ],
+                                expand_if_available = "fdo_profile_path",
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            feature(
+                name = "fdo_prefetch_hints",
+                flag_sets = [
+                    flag_set(
+                        actions = [
+                            ACTION_NAMES.c_compile,
+                            ACTION_NAMES.cpp_compile,
+                            ACTION_NAMES.lto_backend,
+                        ],
+                        flag_groups = [
+                            flag_group(
+                                flags = [
+                                    "-mllvm",
+                                    "-prefetch-hints-file=%{fdo_prefetch_hints_path}",
+                                ],
+                                expand_if_available = "fdo_prefetch_hints_path",
+                            ),
+                        ],
+                    ),
+                ],
+            ),
+            feature(
+                name = "cs_fdo_instrument",
+                provides = ["csprofile"],
+                flag_sets = [
+                    flag_set(
+                        actions = [
+                            ACTION_NAMES.c_compile,
+                            ACTION_NAMES.cpp_compile,
+                            ACTION_NAMES.lto_backend,
+                        ] + CC_ACTIONS.cc_link,
+                        flag_groups = [
+                            flag_group(
+                                flags = ["-fcs-profile-generate=%{cs_fdo_instrument_path}"],
+                                expand_if_available = "cs_fdo_instrument_path",
+                            ),
+                        ],
+                    ),
+                ],
+            )
+        ]
+
 
     ########## Sanitizer Features ##########
     def sanitizer_features(name, sanitizer_type, extra_compiler_flags = [], extra_linker_flags = []):
@@ -1350,34 +1378,35 @@ def toolchains_tools_features_config_gcc_like(ctx, compiler_type):
             ],
         )
 
-    features += [
-        sanitizer_features("asan", "address"),
-        sanitizer_features("tsan", "thread"),
-        sanitizer_features("ubsan", "undefined"),
+    if ctx.attr.disable_sanitizers == False:
+        features += [
+            sanitizer_features("asan", "address"),
+            sanitizer_features("tsan", "thread"),
+            sanitizer_features("ubsan", "undefined"),
 
-        feature(
-            name = "default_sanitizer_flags",
-            enabled = True,
-            flag_sets = [
-                flag_set(
-                    actions = CC_ACTIONS.cc_compile_only,
-                    flag_groups = [
-                        flag_group(
-                            flags = [
-                                "-fno-omit-frame-pointer",
-                                "-fno-sanitize-recover=all",
-                            ],
-                        ),
-                    ],
-                    with_features = [
-                        with_feature_set(features = ["asan"]),
-                        with_feature_set(features = ["tsan"]),
-                        with_feature_set(features = ["ubsan"]),
-                    ],
-                ),
-            ],
-        )
-    ]
+            feature(
+                name = "default_sanitizer_flags",
+                enabled = True,
+                flag_sets = [
+                    flag_set(
+                        actions = CC_ACTIONS.cc_compile_only,
+                        flag_groups = [
+                            flag_group(
+                                flags = [
+                                    "-fno-omit-frame-pointer",
+                                    "-fno-sanitize-recover=all",
+                                ],
+                            ),
+                        ],
+                        with_features = [
+                            with_feature_set(features = ["asan"]),
+                            with_feature_set(features = ["tsan"]),
+                            with_feature_set(features = ["ubsan"]),
+                        ],
+                    ),
+                ],
+            )
+        ]
 
     ########## Custom Features ##########
     # buildifier: disable=list-append
